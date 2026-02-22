@@ -24,10 +24,7 @@ public:
         expressions.push(variable, coefficient);
     }
 
-    Expression(std::map<Variable<T>, int> otherExpressions) {
-        // expressions.push(variable, coefficient);
-        // expressions.merge(otherExpressions);
-
+    explicit Expression(std::map<Variable<T>, int> otherExpressions) {
         expressions = otherExpressions;
     }
 
@@ -44,25 +41,23 @@ public:
     }
 
     auto operator<(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, constraintVariable);
+        return Constraint(this, lt, constraintVariable);
     }
 
     auto operator<=(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, constraintVariable);
+        return Constraint(this, lte, constraintVariable);
     }
 
     auto operator>(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, constraintVariable);
+        return Constraint(this, gt, constraintVariable);
     }
 
     auto operator>=(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, constraintVariable);
+        return Constraint(this, gte, constraintVariable);
     }
 
 private:
     std::map<Variable<T>, int> expressions = {};
-    // int coefficient;
-    // T variable;
 };
 
 template <typename T>
