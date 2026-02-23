@@ -8,7 +8,6 @@ add_executable(linear_programming main.cpp
         simplex/Simplex.cpp
         simplex/Constraint.cpp
         simplex/Constraint.h
-        simplex/Variable.cpp
         simplex/Variable.h
         simplex/Expression.cpp
         simplex/Expression.h
