@@ -9,7 +9,6 @@
 #include "Variable.h"
 
 template <typename T>
-
 class Constraint {
 public:
     Constraint(

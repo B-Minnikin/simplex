@@ -6,7 +6,6 @@
 #define LINEAR_PROGRAMMING_EXPRESSION_H
 #include <map>
 
-#include "Constraint.h"
 #include "Variable.h"
 #include "EnumTypes.h"
 
@@ -14,7 +13,6 @@ template <typename T>
 class Constraint;
 
 template <typename T>
-
 class Expression {
 public:
     Expression(const int coefficient, const Variable<T> variable) {
