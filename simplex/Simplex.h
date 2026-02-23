@@ -23,10 +23,16 @@ public:
     explicit Simplex(objectiveType objType, std::vector<Constraint<int>> constraints);
 
     [[nodiscard]] auto solve() const -> int;
+    [[nodiscard]] auto maxCornerPoints() const -> unsigned long long;
 
 private:
     objectiveType objective;
     std::vector<Constraint<int>> constraints;
+
+    [[nodiscard]] auto getM() const -> size_t;
+    [[nodiscard]] auto getN() const -> int;
+
+    static auto getFactorial(int start) -> unsigned long long;
 };
 
 #endif //LINEAR_PROGRAMMING_SIMPLEX_H
