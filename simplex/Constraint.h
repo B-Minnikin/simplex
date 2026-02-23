@@ -4,6 +4,7 @@
 
 #ifndef LINEAR_PROGRAMMING_CONSTRAINT_H
 #define LINEAR_PROGRAMMING_CONSTRAINT_H
+#include "EnumTypes.h"
 #include "Expression.h"
 #include "Variable.h"
 
@@ -13,13 +14,13 @@ class Constraint {
 public:
     Constraint(
         Expression<T> expr,
-        const inequalityType inequality,
+        const EqualityType inequality,
         Variable<T> constraintVariable)
         : expression(expr), inequality(inequality), constraintVariable(constraintVariable) { }
 
 private:
     Expression<T> expression;
-    inequalityType inequality;
+    EqualityType inequality;
     Variable<T> constraintVariable;
 };
 

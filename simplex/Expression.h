@@ -8,13 +8,10 @@
 
 #include "Constraint.h"
 #include "Variable.h"
+#include "EnumTypes.h"
 
-enum inequalityType {
-    lt,
-    lte,
-    gt,
-    gte,
-};
+template <typename T>
+class Constraint;
 
 template <typename T>
 

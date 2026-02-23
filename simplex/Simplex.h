@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Constraint.h"
+#include "EnumTypes.h"
 
 // objective function
 // variables
@@ -15,8 +16,6 @@
 // add slack
 // walk the boundary
 // somehow work out the optimal solution
-
-enum objectiveType { Minimise, Maximise };
 
 class Simplex {
 

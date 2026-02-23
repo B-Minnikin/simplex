@@ -11,4 +11,5 @@ add_executable(linear_programming main.cpp
         simplex/Variable.cpp
         simplex/Variable.h
         simplex/Expression.cpp
-        simplex/Expression.h)
+        simplex/Expression.h
+        simplex/EnumTypes.h)
