@@ -17,6 +17,8 @@ public:
         Variable<T> constraintVariable)
         : expression(expr), inequality(inequality), constraintVariable(constraintVariable) { }
 
+    [[nodiscard]] auto isEquation() -> bool ;
+
 private:
     Expression<T> expression;
     EqualityType inequality;
