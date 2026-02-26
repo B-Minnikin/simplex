@@ -6,9 +6,12 @@ set(CMAKE_CXX_STANDARD 23)
 add_executable(linear_programming main.cpp
         simplex/Simplex.h
         simplex/Simplex.cpp
-        simplex/Constraint.cpp
-        simplex/Constraint.h
-        simplex/Variable.h
-        simplex/Expression.cpp
-        simplex/Expression.h
-        simplex/EnumTypes.h)
+        data_types/Constraint.cpp
+        data_types/Constraint.h
+        data_types/Variable.h
+        data_types/Expression.h
+        data_types/EnumTypes.h
+        simplex/Tableau.cpp
+        simplex/Tableau.h
+        data_types/Primitive.h
+        data_types/Value.h)
