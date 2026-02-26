@@ -5,7 +5,10 @@
 #ifndef LINEAR_PROGRAMMING_ENUMTYPES_H
 #define LINEAR_PROGRAMMING_ENUMTYPES_H
 
-enum objectiveType { Minimise, Maximise };
+enum ObjectiveType {
+    Minimise,
+    Maximise,
+};
 
 enum EqualityType {
     lt,

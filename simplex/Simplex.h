@@ -4,10 +4,11 @@
 
 #ifndef LINEAR_PROGRAMMING_SIMPLEX_H
 #define LINEAR_PROGRAMMING_SIMPLEX_H
+#include <memory>
 #include <vector>
 
-#include "Constraint.h"
-#include "EnumTypes.h"
+#include "../data_types/Constraint.h"
+#include "../data_types/EnumTypes.h"
 
 // objective function
 // variables
@@ -17,17 +18,24 @@
 // walk the boundary
 // somehow work out the optimal solution
 
+template <typename T>
 class Simplex {
-
 public:
-    explicit Simplex(objectiveType objType, std::vector<Constraint<int>> constraints);
+    explicit Simplex(
+        ObjectiveType objType,
+        Constraint<T> &objective,
+        std::vector<Constraint<T>> &constraints
+    );
 
-    [[nodiscard]] auto solve() const -> int;
+    [[nodiscard]] auto solve() const -> std::vector<T>;
     [[nodiscard]] auto maxCornerPoints() const -> unsigned long long;
 
+    auto addSlack() -> void;
+
 private:
-    objectiveType objective;
-    std::vector<Constraint<int>> constraints;
+    ObjectiveType objectiveType;
+    std::shared_ptr<Constraint<T>> objectiveFunction;
+    std::shared_ptr<std::vector<Constraint<T>>> constraints;
 
     [[nodiscard]] auto getM() const -> size_t;
     [[nodiscard]] auto getN() const -> int;
