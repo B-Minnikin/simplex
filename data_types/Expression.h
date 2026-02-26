@@ -15,8 +15,8 @@ class Constraint;
 template <typename T>
 class Expression {
 public:
-    Expression(const int coefficient, const Variable<T> variable) {
-        expressions.push(variable, coefficient);
+    Expression(const int coefficient, const Variable<T> var) {
+        expressions.push(var, coefficient);
     }
 
     explicit Expression(std::map<Variable<T>, int> otherExpressions) {
@@ -25,6 +25,13 @@ public:
 
     auto operator+(const Expression& expr) -> Expression<T> {
         expressions.merge(expr);
+
+        return this;
+    }
+
+    // TODO - test this
+    auto operator+(const Variable<T> &var) -> Expression<T> {
+        expressions.push(var);
 
         return this;
     }
@@ -49,6 +56,12 @@ public:
 
     auto operator>=(Variable<T> constraintVariable) -> Constraint<T> {
         return Constraint(this, gte, constraintVariable);
+    }
+
+    auto flipAllSigns() -> void {
+        for (auto& expr : expressions) {
+            expr.second *= -1;
+        }
     }
 
 private:
