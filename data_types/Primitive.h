@@ -13,11 +13,15 @@ public:
     Primitive() :
           id(nextFreeId++) { }
 
+    [[nodiscard]] auto getId() const -> int {
+        return id;
+    }
+
     auto operator<(const Primitive& other) const -> bool {
         return id < other.id;
     }
 
-private:
+protected:
     int id;
 };
 

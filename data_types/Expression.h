@@ -15,15 +15,17 @@ class Constraint;
 template <typename T>
 class Expression {
 public:
-    Expression(const int coefficient, const Variable<T> var) {
-        expressions.push(var, coefficient);
+    explicit Expression(const Variable<T> var) { // TODO - move in?
+        expressions.push(var.getId(), var);
     }
 
-    explicit Expression(std::map<Variable<T>, int> otherExpressions) {
-        expressions = otherExpressions;
+    explicit Expression(std::vector<Variable<T>> otherExpressions) {
+        for (const auto &var : otherExpressions) {
+            expressions[var.getId()] = var;
+        }
     }
 
-    auto operator+(const Expression& expr) -> Expression<T> {
+    auto operator+(const Expression &expr) -> Expression<T> {
         expressions.merge(expr);
 
         return this;
@@ -31,18 +33,18 @@ public:
 
     // TODO - test this
     auto operator+(const Variable<T> &var) -> Expression<T> {
-        expressions.push(var);
+        expressions.push(var.getId(), var); // TODO - check for clashes - what should behaviour be?
 
         return this;
     }
 
-    auto operator-(const Expression& expr) -> Expression<T> {
+    auto operator-(const Expression &expr) -> Expression<T> {
         expressions.merge(expr);
 
         return this;
     }
 
-    auto operator<(Variable<T> constraintVariable) -> Constraint<T> {
+    auto operator<(Variable<T> constraintVariable) -> Constraint<T> { // TODO - move?
         return Constraint(this, lt, constraintVariable);
     }
 
@@ -58,6 +60,14 @@ public:
         return Constraint(this, gte, constraintVariable);
     }
 
+    [[nodiscard]] auto findVariable(int id) const -> Variable<T>* {
+        if (!expressions.contains(id)) {
+            return nullptr;
+        }
+
+        return expressions.at(id);
+    }
+
     auto flipAllSigns() -> void {
         for (auto& expr : expressions) {
             expr.second *= -1;
@@ -65,7 +75,7 @@ public:
     }
 
 private:
-    std::map<Variable<T>, int> expressions = {};
+    std::map<int, Variable<T>> expressions = {};
 };
 
 template <typename T>

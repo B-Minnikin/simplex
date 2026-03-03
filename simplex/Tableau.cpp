@@ -4,6 +4,7 @@
 
 #include "Tableau.h"
 
+#include <cmath>
 #include <set>
 #include <cstdint>
 #include <format>
@@ -21,36 +22,35 @@
 // divide each row equation value by pivot coefficient
 // select smallest -> coefficient is pivot element
 
+const int OBJECTIVE_ROW_COUNT = 1;
+const int SOLUTION_COLUMN_COUNT = 1;
+
 
 template<typename T>
 Tableau<T>::Tableau(const ObjectiveType objectiveType, Constraint<T> &objectiveFunction, std::vector<Constraint<T>> &constraints) {
     reformulateObjective();
 
-    // Maximise by negating
     if (objectiveType == Minimise) {
         objectiveFunction.negateExpression();
     }
 
-    // column count = each expression var + each slack (constraint count) + eq value
-    // TODO - change this to a map
-    // std::set<int> vars = {};
     auto slackCount = 0;
 
-    extractVariables(vars, objectiveFunction);
+    extractVariables(objectiveFunction);
 
     // Create the slack variables
     for (constexpr int i = 1; auto &constraint : constraints) {
         if (constraint.isEquation()) {
             slackCount++;
-            constraint.addVariable(Variable<T>(0, std::format("s{}", i)));
+            constraint.addVariable(Variable<T>(std::format("s{}", i)));
         }
 
-        extractVariables(vars, constraint.getExpression());
+        extractVariables(constraint.getExpression());
     }
 
-    columnCount = 1 + static_cast<int>(vars.size()) + slackCount;
-    rowCount = 1 + static_cast<int>(constraints.size());
-    coreTableau (columnCount * rowCount);
+    columnCount = SOLUTION_COLUMN_COUNT + static_cast<int>(vars.size()) + slackCount;
+    rowCount = OBJECTIVE_ROW_COUNT + static_cast<int>(constraints.size());
+    tableauCoefficients(columnCount * rowCount);
 
     // formulate the objective equation
     // for (int i = 0; i < columnCount; i++) {
@@ -68,24 +68,88 @@ Tableau<T>::Tableau(const ObjectiveType objectiveType, Constraint<T> &objectiveF
 
     // Make the first objective result row
     for (int i = 0; auto &var : vars) {
+        // coreTableau[i] = var.second.coefficient;
 
+        // from the objective, get the variable which matches the symbol
+
+        // if last element, get the constraint variable
+        if (i == vars.count() - 1) {
+            tableauCoefficients[i] = objectiveFunction.getVariable().getCoefficient();
+        }
     }
 
-    for (int i = 0; i < columnCount * rowCount; i++) {
-        // if column 0 -> results
-        if (i % columnCount == 0) {
-            if (i == 0) {
-                coreTableau[i] = objectiveFunction.getVariable(); // TODO - check
-            }
+    auto x = vars[3];
 
-            auto varIndex = i % columnCount - 1;
-            coreTableau[i] = vars[varIndex].var;
+    // TODO - change the solution column to last
+    for (int i = columnCount; i < (columnCount - 1) * rowCount; i++) {
+        // auto constraintIndex = (i / rowCount) - 1; // TODO - check
+        // Math.floor(index - column count % column count)
+        auto constraintIndex = std::floor((i - columnCount) % columnCount);
+
+        // Last should be the solution
+        if (i % columnCount == columnCount - 1) {
+            // if (i == 0) {
+            //     tableauCoefficients[i] = objectiveFunction.getVariable(); // TODO - check
+            // }
+
+            auto constraintCoefficient = constraints[constraintIndex].getVariable().getCoefficient();
+            tableauCoefficients[i] = constraintCoefficient;
+
+            continue;
         }
 
-        // if row 0 -> objective
+        // Normal column for each variable
+
+        // get the var
+        auto var = vars[constraintIndex];
+        // check the id
+        auto varId = var.getId();
+        // find the id in the constraint expression
+        auto thisConstraint = constraints[constraintIndex];
+        auto matchingVar = thisConstraint.findVarible(varId);
+        if (matchingVar == nullptr) {
+            continue;
+        }
+        // get the coefficient from it
+        auto thisCoefficient = matchingVar.getCoefficient();
+        tableauCoefficients[i] = thisCoefficient;
 
         // if variable does not exist in set -> give coefficient of zero
     }
+}
+
+template<typename T>
+auto Tableau<T>::getFinalObjective() const -> std::vector<Variable<T>> {
+    std::vector<Variable<T>*> finalVariables = {};
+
+    for (int primaryColumnIndex = 0; primaryColumnIndex < primaryVariableCount; primaryColumnIndex++) {
+        auto thisVarIndex = primaryColumnIndex % (columnCount - primaryVariableCount);
+        auto thisVar = vars[thisVarIndex];
+
+        auto oneCount = 0;
+
+        for (int rowIndex = 1; rowIndex < rowCount; rowIndex++) {
+            auto elementIndex = rowIndex * columnCount + primaryColumnIndex;
+            auto coefficient = tableauCoefficients[elementIndex];
+
+
+            if (coefficient == 1) {
+                oneCount += 1;
+
+                auto solutionIndex = rowIndex * columnCount + columnCount - 1;
+                auto solution = tableauCoefficients[solutionIndex];
+
+                finalVariables.push_back(Variable<T>(solution, thisVar.getSymbol()));
+            }
+
+            if (oneCount > 1) {
+                // TODO - warn
+                break;
+            }
+        }
+    }
+
+    return finalVariables;
 }
 
 template<typename T>
@@ -95,9 +159,6 @@ auto Tableau<T>::pivot() const -> void {
 
     // column is basic if only one coefficient is 1 and the rest are zero
 
-    // add slacks - init with 1 for row
-    // create tableau with coefficients
-
     // select smallest coefficient from objective row
     // this is the pivot
 
@@ -105,8 +166,18 @@ auto Tableau<T>::pivot() const -> void {
     // select smallest -> coefficient is pivot element
 
     const auto pivotColumnIndex = getPivotColumn();
+    if (pivotColumnIndex == -1) {
+        // TODO - implement
+        // We should have reached the most optimal solution already
+    }
+
     auto pivotRowIndex = getPivotRow(pivotColumnIndex);
 
+    // TODO - perform pivot on row
+    // TODO - perform pivot on other rows
+    // TODO - loop around again and check for lowest coefficient from objective function
+    // if no negative values found: solution found
+    // return a new objective function which matches the solution coefficients
 }
 
 template<typename T>
@@ -124,9 +195,13 @@ auto Tableau<T>::reformulateObjective(std::shared_ptr<Constraint<T>> objective) 
 
 template<typename T>
 auto Tableau<T>::extractVariables(const Expression<T> &expr) const -> void {
+    // TODO - handle multiple instances in the same expression
+
     for (auto &pair : expr.expressions) {
         vars.insert(pair.first.id, pair.first); // TODO - think about references / pointers
     }
+
+    primaryVariableCount = vars.count();
 }
 
 template<typename T>
@@ -135,7 +210,7 @@ auto Tableau<T>::isColumnBasic(const int columnIndex) const -> bool {
 
     for (int i = 0; i < rowCount; i++) {
         // TODO - need to check this
-        if (const int coefficient = coreTableau[columnCount * i + columnIndex]; coefficient == 1) {
+        if (const int coefficient = tableauCoefficients[columnCount * i + columnIndex]; coefficient == 1) {
             oneCount++;
 
             if (oneCount > 1) {
@@ -152,17 +227,34 @@ auto Tableau<T>::isColumnBasic(const int columnIndex) const -> bool {
 }
 
 template<typename T>
+auto Tableau<T>::getSmallestObjectiveCoefficient() const -> T {
+    // iterate over the objective expression
+    // look for smallest number
+
+    auto smallestCoefficient = std::numeric_limits<T>::max;
+
+    // Do not include the solution column (last)
+    for (int i = 0; i < columnCount; i++) {
+        if (tableauCoefficients[i] < smallestCoefficient) {
+            smallestCoefficient = tableauCoefficients[i];
+        }
+    }
+
+    return smallestCoefficient;
+}
+
+template<typename T>
 auto Tableau<T>::getPivotColumn() const -> int {
     // objective function should be in first row
     // find index with the smallest number
 
     int smallestIndex = -1;
-    int smallestCoefficient = INT32_MAX; // TODO type ?
+    int smallestCoefficient = std::numeric_limits<T>::max;
 
-    // trim first column because it's the solutions
-    for (int i = 1; i < columnCount; i++) {
-        if (coreTableau[i] < smallestCoefficient) {
-            coreTableau[i] = smallestCoefficient;
+    // Trim last column because it's the solutions
+    for (int i = 0; i < columnCount - 1; i++) {
+        if (tableauCoefficients[i] < smallestCoefficient) {
+            tableauCoefficients[i] = smallestCoefficient; // TODO - check this - looks wrong
             smallestIndex = i;
         }
     }
@@ -181,7 +273,13 @@ auto Tableau<T>::getPivotRow(const int columnIndex) const -> int {
         auto valueIndex = rowCount * i + columnIndex;
         auto solutionIndex = rowCount * i;
 
-        auto val = coreTableau[solutionIndex] / coreTableau[valueIndex];
+        auto value = tableauCoefficients[valueIndex];
+        if (value <= 0) {
+            // Ignore negative or zero divisor
+            continue;
+        }
+
+        auto val = tableauCoefficients[solutionIndex] / value;
         if (val < smallestResultColumnValue) {
             smallestRowIndex = i;
             smallestResultColumnValue = val;
@@ -198,21 +296,21 @@ auto Tableau<T>::performPivot(const int columnIndex, const int rowIndex) const -
     // divide all elements in the row by that value
 
     auto pivotElementIndex = rowCount * rowIndex + columnIndex;
-    auto pivotElement = coreTableau[pivotElementIndex];
+    auto pivotElement = tableauCoefficients[pivotElementIndex];
     // TODO - do I need to check for zero?
 
     // coreTableau[pivotElementIndex] /= pivotElement;
 
     for (int i = 0; i < columnCount; i++) {
         auto thisElementIndex = rowCount * rowIndex + i;
-        coreTableau[thisElementIndex] /= pivotElement;
+        tableauCoefficients[thisElementIndex] /= pivotElement;
     }
 }
 
 template<typename T>
 auto Tableau<T>::zeroOtherRows(const int columnIndex, const int rowIndex) const -> void {
     auto pivotElementIndex = rowCount * rowIndex + columnIndex;
-    auto pivotElement = coreTableau[pivotElementIndex];
+    auto pivotElement = tableauCoefficients[pivotElementIndex];
 
     for (int i = 0; i < rowCount; i++) {
         if (i == rowIndex) {
@@ -220,7 +318,7 @@ auto Tableau<T>::zeroOtherRows(const int columnIndex, const int rowIndex) const 
         }
 
         auto thisElementIndex = rowCount * i + columnIndex;
-        auto thisElement = coreTableau[thisElementIndex];
+        auto thisElement = tableauCoefficients[thisElementIndex];
 
         // if zero, leave as is
 
@@ -229,7 +327,7 @@ auto Tableau<T>::zeroOtherRows(const int columnIndex, const int rowIndex) const 
 
         for (int j = 0; j < columnIndex; j++) {
             auto thisIndex = rowCount * i + j;
-            coreTableau[thisIndex] + zeroCoefficient;
+            tableauCoefficients[thisIndex] + zeroCoefficient;
         }
 
         // coreTableau[thisElementIndex] = thisElement + thisElement * -1 * pivotElement;
@@ -251,9 +349,9 @@ auto Tableau<T>::getBasicColumnSolution(const int columnIndex) const -> T {
     for (int i = 0; i < rowCount; i++) {
         auto fieldIndex = i * rowCount + columnIndex;
 
-        if (coreTableau[fieldIndex] == 1) {
+        if (tableauCoefficients[fieldIndex] == 1) {
             auto solutionIndex = rowCount * i;
-            return coreTableau[solutionIndex];
+            return tableauCoefficients[solutionIndex];
         }
     }
 

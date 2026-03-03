@@ -21,20 +21,29 @@ public:
         std::vector<Constraint<T>>& constraints
     );
 
+    [[nodiscard]] auto isSolved() const -> bool {
+        return getSmallestObjectiveCoefficient() >= 0;
+    }
+
+    [[nodiscard]] auto getFinalObjective() const -> std::vector<Variable<T>>;
+
     auto pivot() const -> void;
 
 private:
+    int primaryVariableCount = 0;
     int columnCount;
     int rowCount;
-    std::vector<T> coreTableau;
+    std::vector<T> tableauCoefficients;
 
-    std::unordered_map<int, Variable<T>> vars = {};
+    std::vector<Variable<T>> vars = {};
+    std::unordered_map<int, int> varMap = {};
 
     auto printTableau() const -> void;
 
     auto reformulateObjective(std::shared_ptr<Constraint<T>> objective) -> void;
     auto extractVariables(const Expression<T> &expr) const -> void;
     [[nodiscard]] auto isColumnBasic(int columnIndex) const -> bool;
+    [[nodiscard]] auto getSmallestObjectiveCoefficient() const -> T;
     [[nodiscard]] auto getPivotColumn() const -> int;
     [[nodiscard]] auto getPivotRow(int columnIndex) const -> int;
     auto performPivot(int columnIndex, int rowIndex) const -> void;

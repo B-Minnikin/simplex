@@ -27,6 +27,9 @@ public:
     [[nodiscard]] auto getVariable() const -> Variable<T>* {
         return constraintVariable;
     }
+    [[nodiscard]] auto findVariable(int id) const -> Variable<T>* {
+        return expression.findVariable(id);
+    }
 
     auto addVariable(Variable<T> var) -> void {
         expression = expression + Expression(1, var);

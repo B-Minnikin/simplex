@@ -10,13 +10,6 @@
 #include "../data_types/Constraint.h"
 #include "../data_types/EnumTypes.h"
 
-// objective function
-// variables
-// constraints
-
-// add slack
-// walk the boundary
-// somehow work out the optimal solution
 
 template <typename T>
 class Simplex {
@@ -27,7 +20,7 @@ public:
         std::vector<Constraint<T>> &constraints
     );
 
-    [[nodiscard]] auto solve() const -> std::vector<T>;
+    [[nodiscard]] auto solve() const -> std::vector<Variable<T>>;
     [[nodiscard]] auto maxCornerPoints() const -> unsigned long long;
 
     auto addSlack() -> void;

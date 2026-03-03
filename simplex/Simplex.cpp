@@ -21,15 +21,19 @@ Simplex<T>::Simplex(
           constraints(std::make_shared<T>(constraints)) { }
 
 template <typename T>
-auto Simplex<T>::solve() const -> std::vector<T> {
+auto Simplex<T>::solve() const -> std::vector<Variable<T>> {
     Tableau<T> tableau(objectiveFunction, constraints);
+
+    while (!tableau.isSolved()) {
+        tableau.pivot();
+    }
 
     // for (auto &constraint : constraints) {
     //     // does the constraint satisfy the objective function?
     //     // std::static_cast<>
     // }
 
-    return -1;
+    return tableau.getFinalObjective();
 }
 
 template <typename T>
@@ -45,6 +49,7 @@ auto Simplex<T>::maxCornerPoints() const -> unsigned long long {
 }
 
 template <typename T>
+// TODO - delete
 auto Simplex<T>::addSlack() -> void {
     for (auto &constraint : constraints) {
         if (constraint.isEquation()) {
