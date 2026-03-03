@@ -12,13 +12,27 @@
 template <typename T>
 class Variable : Primitive {
 public:
-    explicit Variable(T var, std::string symbol)
-        : symbol(std::move(symbol)),
-          var(var) { }
+    explicit Variable(std::string symbol)
+        : coefficient(1),
+          symbol(std::move(symbol))
+           { }
+
+    explicit Variable(T coefficient, std::string symbol)
+        : coefficient(coefficient),
+          symbol(std::move(symbol))
+           { }
+
+    [[nodiscard]] auto getCoefficient() const -> T {
+        return coefficient;
+    }
+
+    [[nodiscard]] auto getSymbol() const -> std::string {
+        return symbol;
+    }
 
 private:
-    std::string symbol; // TODO - handle this
-    T var;
+    T coefficient;
+    std::string symbol;
 };
 
 
