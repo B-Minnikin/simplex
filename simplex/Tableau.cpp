@@ -52,69 +52,38 @@ Tableau<T>::Tableau(const ObjectiveType objectiveType, Constraint<T> &objectiveF
     rowCount = OBJECTIVE_ROW_COUNT + static_cast<int>(constraints.size());
     tableauCoefficients(columnCount * rowCount);
 
-    // formulate the objective equation
-    // for (int i = 0; i < columnCount; i++) {
-    //
-    // }
-    //
-    // for (int i = 0; i < rowCount; i++) {
-    //
-    // }
-
-    // make the map
-    // for (auto &s : vars) {
-    //     nonBasicIndices[s] = 1; // TODO
-    // }
-
     // Make the first objective result row
     for (int i = 0; auto &var : vars) {
-        // coreTableau[i] = var.second.coefficient;
-
-        // from the objective, get the variable which matches the symbol
-
-        // if last element, get the constraint variable
         if (i == vars.count() - 1) {
             tableauCoefficients[i] = objectiveFunction.getVariable().getCoefficient();
         }
     }
 
-    auto x = vars[3];
-
-    // TODO - change the solution column to last
     for (int i = columnCount; i < (columnCount - 1) * rowCount; i++) {
-        // auto constraintIndex = (i / rowCount) - 1; // TODO - check
-        // Math.floor(index - column count % column count)
         auto constraintIndex = std::floor((i - columnCount) % columnCount);
 
         // Last should be the solution
         if (i % columnCount == columnCount - 1) {
-            // if (i == 0) {
-            //     tableauCoefficients[i] = objectiveFunction.getVariable(); // TODO - check
-            // }
-
             auto constraintCoefficient = constraints[constraintIndex].getVariable().getCoefficient();
             tableauCoefficients[i] = constraintCoefficient;
 
             continue;
         }
 
-        // Normal column for each variable
-
-        // get the var
         auto var = vars[constraintIndex];
-        // check the id
         auto varId = var.getId();
-        // find the id in the constraint expression
+
         auto thisConstraint = constraints[constraintIndex];
         auto matchingVar = thisConstraint.findVarible(varId);
+
+        // Missing variables can be zeroed
         if (matchingVar == nullptr) {
+            tableauCoefficients[i] = static_cast<T>(0);
             continue;
         }
-        // get the coefficient from it
+
         auto thisCoefficient = matchingVar.getCoefficient();
         tableauCoefficients[i] = thisCoefficient;
-
-        // if variable does not exist in set -> give coefficient of zero
     }
 }
 
