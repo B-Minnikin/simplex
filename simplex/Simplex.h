@@ -26,9 +26,9 @@ public:
     auto addSlack() -> void;
 
 private:
-    ObjectiveType objectiveType;
-    std::shared_ptr<Constraint<T>> objectiveFunction;
     std::shared_ptr<std::vector<Constraint<T>>> constraints;
+    std::shared_ptr<Constraint<T>> objectiveFunction;
+    ObjectiveType objectiveType;
 
     [[nodiscard]] auto getM() const -> size_t;
     [[nodiscard]] auto getN() const -> int;

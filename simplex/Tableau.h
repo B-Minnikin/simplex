@@ -10,7 +10,6 @@
 
 #include "../data_types/Expression.h"
 
-// TODO - investigate variable alignment order
 
 template <typename T>
 class Tableau {
@@ -30,13 +29,13 @@ public:
     auto pivot() const -> void;
 
 private:
+    std::vector<Variable<T>> vars = {};
+    std::vector<T> tableauCoefficients;
+    std::unordered_map<int, int> varMap = {};
+
     int primaryVariableCount = 0;
     int columnCount;
     int rowCount;
-    std::vector<T> tableauCoefficients;
-
-    std::vector<Variable<T>> vars = {};
-    std::unordered_map<int, int> varMap = {};
 
     auto printTableau() const -> void;
 

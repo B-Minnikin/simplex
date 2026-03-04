@@ -40,8 +40,8 @@ public:
 
 private:
     Expression<T> expression;
-    EqualityType equality;
     Variable<T> constraintVariable;
+    EqualityType equality;
 };
 
 
