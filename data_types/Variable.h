@@ -6,21 +6,37 @@
 #define LINEAR_PROGRAMMING_VARIABLE_H
 #include <string>
 
+#include "EnumTypes.h"
 #include "Primitive.h"
+
+template <typename T>
+struct VarParams {
+    T coefficient = 1.0;
+    std::string symbol = "-";
+    VarKind kind = Var;
+};
 
 
 template <typename T>
-class Variable : Primitive {
+class Variable : public Primitive {
 public:
-    explicit Variable(std::string symbol)
-        : coefficient(1),
-          symbol(std::move(symbol))
-           { }
+    explicit Variable(VarParams<T> params)
+        : coefficient(params.coefficient),
+          symbol(std::move(params.symbol)),
+          kind(params.kind) { }
 
-    explicit Variable(T coefficient, std::string symbol)
-        : coefficient(coefficient),
-          symbol(std::move(symbol))
-           { }
+    auto operator+=(const Variable val) -> void {
+        coefficient += val.getCoefficient();
+    }
+
+    auto operator*=(T val) -> void {
+        coefficient *= val;
+    }
+
+    auto operator==(const Variable &other) const -> bool {
+        return other.getSymbol() == symbol
+            && std::abs(other.getCoefficient() - coefficient) < 1e-9;
+    }
 
     [[nodiscard]] auto getCoefficient() const -> T {
         return coefficient;
@@ -30,9 +46,14 @@ public:
         return symbol;
     }
 
-private:
+    [[nodiscard]] auto getKind() const -> VarKind {
+        return kind;
+    }
+
+protected:
     T coefficient;
     std::string symbol;
+    VarKind kind;
 };
 
 

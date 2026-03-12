@@ -15,28 +15,75 @@ public:
         Expression<T> expr,
         const EqualityType equality,
         Variable<T> constraintVariable)
-        : expression(expr), equality(equality), constraintVariable(constraintVariable) { }
+            : expression(expr), equality(equality), constraintVariable(constraintVariable) { }
 
-    [[nodiscard]] auto isEquation() const -> bool ;
-    [[nodiscard]] auto getExpression() -> Expression<T>* { // TODO - raw pointer
+    [[nodiscard]] auto isEquation() const -> bool {
+        if (equality == eq) {
+            return true;
+        }
+
+        bool hasCoefficientOfOne = false;
+        const bool hasFewerThanTwoExpressions = expression.getSize() < 2;
+
+        for (auto &var : expression.getInnerVariables()) {
+
+            // If coefficient is not 1 -> is not equation
+            if (var.getCoefficient() != 1) {
+                hasCoefficientOfOne = true;
+            }
+        }
+
+        return !(hasCoefficientOfOne && hasFewerThanTwoExpressions);
+    }
+
+    [[nodiscard]] auto getExpression() -> Expression<T> {
         return expression;
     }
+
     [[nodiscard]] auto getEquality() const -> EqualityType {
         return equality;
     }
-    [[nodiscard]] auto getVariable() const -> Variable<T>* {
-        return constraintVariable;
+
+    [[nodiscard]] auto getVariable() const -> const Variable<T>* {
+        return &constraintVariable;
     }
-    [[nodiscard]] auto findVariable(int id) const -> Variable<T>* {
-        return expression.findVariable(id);
+
+    [[nodiscard]] auto getSolutionVariable() const -> std::optional<Variable<T>*> {
+        auto vars = expression.getInnerVariables();
+
+        auto it = std::find_if(
+            vars.begin(),
+            vars.end(),
+            [](Variable<T> var) {
+                return var.getKind() == Solution;
+            });
+        if (it != vars.end()) {
+            return &(*it);
+        }
+
+        return std::nullopt;
+    }
+
+    [[nodiscard]] auto findVariable(const std::string &symbol) const -> std::optional<const Variable<T>*> {
+        return expression.findVariableBySymbol(symbol);
     }
 
     auto addVariable(Variable<T> var) -> void {
-        expression = expression + Expression(1, var);
+        expression = expression + Expression<T>(var);
     }
 
-    auto zeroEquation() -> void;
-    auto negateExpression() -> void;
+    auto zeroEquation() -> void {
+        // Flip before adding the RS variable so that it stays positive
+        expression.flipAllSigns();
+
+        expression + Variable(std::move(constraintVariable));
+        equality = eq;
+        constraintVariable = Variable<T>({ .coefficient = 0 });
+    }
+
+    auto negateExpression() -> void {
+        expression.flipAllSigns();
+    }
 
 private:
     Expression<T> expression;

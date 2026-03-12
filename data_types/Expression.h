@@ -5,6 +5,8 @@
 #ifndef LINEAR_PROGRAMMING_EXPRESSION_H
 #define LINEAR_PROGRAMMING_EXPRESSION_H
 #include <map>
+#include <optional>
+#include <vector>
 
 #include "Variable.h"
 #include "EnumTypes.h"
@@ -15,73 +17,142 @@ class Constraint;
 template <typename T>
 class Expression {
 public:
-    explicit Expression(const Variable<T> var) { // TODO - move in?
-        expressions.push(var.getId(), var);
+    explicit Expression(const Variable<T> var) {
+        addVar(var);
     }
 
-    explicit Expression(std::vector<Variable<T>> otherExpressions) {
+    explicit Expression(const std::vector<Variable<T>> otherExpressions) {
         for (const auto &var : otherExpressions) {
-            expressions[var.getId()] = var;
+            addVar(var);
         }
     }
 
-    auto operator+(const Expression &expr) -> Expression<T> {
-        expressions.merge(expr);
+    auto operator+(const Expression expr) -> Expression {        
+        merge(expr);
 
-        return this;
+        return *this;
     }
 
-    // TODO - test this
-    auto operator+(const Variable<T> &var) -> Expression<T> {
-        expressions.push(var.getId(), var); // TODO - check for clashes - what should behaviour be?
+    auto operator+(const Variable<T> var) -> Expression {
+        addVar(var);
 
-        return this;
+        return *this;
     }
 
-    auto operator-(const Expression &expr) -> Expression<T> {
-        expressions.merge(expr);
+    auto operator-(const Expression &expr) -> Expression {
+        merge(expr);
 
-        return this;
+        return *this;
     }
 
-    auto operator<(Variable<T> constraintVariable) -> Constraint<T> { // TODO - move?
-        return Constraint(this, lt, constraintVariable);
+    auto operator-(const Variable<T> var) -> Expression {
+        addVar(var);
+
+        return *this;
     }
 
-    auto operator<=(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, lte, constraintVariable);
+    auto operator<(Variable<T> var) -> Constraint<T> {
+        return Constraint<T>(*this, lt, var);
     }
 
-    auto operator>(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, gt, constraintVariable);
+    auto operator<=(Variable<T> var) -> Constraint<T> {
+        return Constraint<T>(*this, lte, var);
     }
 
-    auto operator>=(Variable<T> constraintVariable) -> Constraint<T> {
-        return Constraint(this, gte, constraintVariable);
+    auto operator>(Variable<T> var) -> Constraint<T> {
+        return Constraint<T>(*this, gt, var);
     }
 
-    [[nodiscard]] auto findVariable(int id) const -> Variable<T>* {
-        if (!expressions.contains(id)) {
-            return nullptr;
+    auto operator>=(Variable<T> var) -> Constraint<T> {
+        return Constraint<T>(*this, gte, var);
+    }
+
+    auto operator==(Variable<T> var) -> Constraint<T> {
+        return Constraint<T>(*this, eq, var);
+    }
+
+    [[nodiscard]] auto getSize() const -> size_t {
+        return variables.size();
+    }
+
+    [[nodiscard]] auto findVariableBySymbol(const std::string &symbol) const -> std::optional<const Variable<T>*> {
+        if (!symbolMap.contains(symbol)) {
+            return std::nullopt;
         }
 
-        return expressions.at(id);
+        return &variables[symbolMap.at(symbol)];
+    }
+
+    [[nodiscard]] auto findVariableById(const int id) const -> std::optional<Variable<T>> {
+        if (!idMap.contains(id)) {
+            return std::nullopt;
+        }
+
+        return variables[idMap.at(id)];
+    }
+
+    // TODO - reference of vector
+    [[nodiscard]] auto getInnerVariables() const -> std::vector<Variable<T>> {
+        return variables;
+    }
+
+    [[nodiscard]] auto getInnerMap() const -> std::map<int, int> {
+        return idMap;
     }
 
     auto flipAllSigns() -> void {
-        for (auto& expr : expressions) {
-            expr.second *= -1;
+        for (auto& expr : variables) {
+            expr *= -1;
         }
     }
 
 private:
-    std::map<int, Variable<T>> expressions = {};
+    std::vector<Variable<T>> variables = {};
+    std::map<std::string, int> symbolMap = {};
+    std::map<int, int> idMap = {};
+    
+    auto addVar(const Variable<T> var) -> void {
+        if (symbolMap.contains(var.getSymbol())) {
+            return;
+        }
+
+        if (idMap.contains(var.getId())) {
+            // TODO - handle clash
+            return;
+        }
+
+        variables.push_back(var);
+
+        const auto varIndex = variables.size() - 1;
+        idMap.emplace(var.getId(), varIndex);
+        symbolMap.emplace(var.getSymbol(), varIndex);
+    }
+    
+    auto merge(const Expression expr) -> void {
+        std::map<std::string, Variable<T>> symbols;
+        for (const auto &var : variables) {
+            symbols.emplace(var.getSymbol(), var);
+        }
+
+        for (auto otherVar : expr.getInnerVariables()) {
+            if (symbols.contains(otherVar.getSymbol())) {
+                auto var = symbols.at(otherVar.getSymbol());
+                var += otherVar;
+            } else {
+                addVar(otherVar);
+            }
+        }
+    }
 };
 
 template <typename T>
 auto operator*(int coefficient, Variable<T> var) -> Expression<T> {
     return Expression<T>(coefficient, var);
 }
+
+// Deduction guide
+template <typename T>
+Expression(Variable<T>) -> Expression<T>;
 
 
 #endif //LINEAR_PROGRAMMING_EXPRESSION_H

@@ -19,4 +19,11 @@ enum EqualityType {
     neq,
 };
 
+enum VarKind {
+    Var,
+    Solution,
+    Slack,
+    Artificial,
+};
+
 #endif //LINEAR_PROGRAMMING_ENUMTYPES_H
