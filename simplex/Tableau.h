@@ -292,11 +292,11 @@ private:
         // divide each column coefficient by coefficient in the solution column
 
         auto smallestRowIndex = -1;
-        auto smallestResultColumnValue = -1;
+        auto smallestResultColumnValue = static_cast<T>(std::numeric_limits<T>::max());
 
-        for (int i = 0; i < rowCount; i++) {
-            auto valueIndex = rowCount * i + columnIndex;
-            auto solutionIndex = rowCount * i;
+        for (int i = 1; i < rowCount; i++) {
+            auto valueIndex = columnCount * i + columnIndex; // ., 1, ., ., 4, ., ., 7, .
+            auto solutionIndex = columnCount * i + columnCount - 1; // get row - last item
 
             auto value = tableauCoefficients[valueIndex];
             if (value <= 0) {
