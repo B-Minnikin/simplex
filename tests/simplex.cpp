@@ -15,7 +15,7 @@ TEST(Simplex, TahaCases) {
     auto objective = Expression(Variable<double>({ .coefficient = 1.0, .symbol = x }))
         + Variable<double>({ .coefficient = 2.0, .symbol = y })
         - Variable<double>({ .coefficient = 2.3, .symbol = z })
-        < Variable<double>({ .coefficient = 2.0, .kind = Solution });
+        < Variable<double>({ .coefficient = 2.0, .kind = Objective });
 
     // auto simplex = Simplex<double>(objective);
     // auto result = simplex.solve();
@@ -31,7 +31,7 @@ TEST(Simplex, TahaCases3_2_1) {
 
     const auto objective = Expression(Variable<double>({ .coefficient = 2.0, .symbol = x1 }))
         + Variable<double>({ .coefficient = 3.0, .symbol = x2 })
-        == Variable<double>({ .symbol = z, .kind = Solution });
+        == Variable<double>({ .symbol = z, .kind = Objective });
 
     const std::vector constraints = {
         Expression(Variable<double>({ .coefficient = 2.0, .symbol = x1 }))
@@ -56,7 +56,7 @@ TEST(Simplex, LibreTextsExample) {
 
     const auto objective = Expression(Variable<double>({ .coefficient = 40.0, .symbol = x1 }))
         + Variable<double>({ .coefficient = 30.0, .symbol = x2 })
-        == Variable<double>({  .symbol = z , .kind = Solution });
+        == Variable<double>({  .symbol = z , .kind = Objective });
 
     const std::vector constraints = {
         Expression(Variable<double>({ .symbol = x1 }))

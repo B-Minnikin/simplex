@@ -21,6 +21,7 @@ enum EqualityType {
 
 enum VarKind {
     Var,
+    Objective,
     Solution,
     Slack,
     Artificial,

@@ -49,13 +49,16 @@ public:
         }
 
         // Sort the variables
-        auto solutionVariable = objectiveFunction.getSolutionVariable();
-        if (!solutionVariable) {
+        auto objectiveVariable = objectiveFunction.getObjectiveVariable();
+        if (!objectiveVariable) {
             // TODO
             return;
         }
-        std::string symbol = solutionVariable.value()->getSymbol();
+        std::string symbol = objectiveVariable.value()->getSymbol();
         std::stable_partition(vars.begin(), vars.end(), [&symbol](const std::string &v) { return v != symbol; });
+
+        // Create the RHS var
+        extractVariables(Expression<T>(Variable<T>({ .symbol = "RHS", .kind = Solution })));
 
         columnCount = static_cast<int>(vars.size());
         rowCount = OBJECTIVE_ROW_COUNT + static_cast<int>(constraints.size());

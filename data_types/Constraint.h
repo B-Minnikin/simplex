@@ -48,20 +48,12 @@ public:
         return &constraintVariable;
     }
 
+    [[nodiscard]] auto getObjectiveVariable() const -> std::optional<Variable<T>*> {
+        return getVariableKind(Objective);
+    }
+
     [[nodiscard]] auto getSolutionVariable() const -> std::optional<Variable<T>*> {
-        auto vars = expression.getInnerVariables();
-
-        auto it = std::find_if(
-            vars.begin(),
-            vars.end(),
-            [](Variable<T> var) {
-                return var.getKind() == Solution;
-            });
-        if (it != vars.end()) {
-            return &(*it);
-        }
-
-        return std::nullopt;
+        return getVariableKind(Solution);
     }
 
     [[nodiscard]] auto findVariable(const std::string &symbol) const -> std::optional<const Variable<T>*> {
@@ -89,6 +81,22 @@ private:
     Expression<T> expression;
     Variable<T> constraintVariable;
     EqualityType equality;
+
+    [[nodiscard]] auto getVariableKind(const VarKind &kind) const -> std::optional<Variable<T>*> {
+        auto vars = expression.getInnerVariables();
+
+        auto it = std::find_if(
+            vars.begin(),
+            vars.end(),
+            [kind](Variable<T> var) {
+                return var.getKind() == kind;
+            });
+        if (it != vars.end()) {
+            return &(*it);
+        }
+
+        return std::nullopt;
+    }
 };
 
 
