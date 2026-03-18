@@ -32,6 +32,8 @@ public:
             tableau.pivot();
         }
 
+        tableau.printTableau();
+
         return tableau.getFinalObjective();
     }
 
