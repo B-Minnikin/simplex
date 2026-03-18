@@ -27,8 +27,11 @@ public:
     [[nodiscard]] auto solve() const -> std::vector<Variable<T>> {
         auto tableau = Tableau<T>(objectiveType, objectiveFunction, constraints);
 
+        tableau.printTableau();
+
         while (!tableau.isSolved()) {
             tableau.pivot();
+            tableau.printTableau();
         }
 
         tableau.printTableau();
