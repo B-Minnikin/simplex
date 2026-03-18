@@ -65,7 +65,6 @@ public:
     }
 
     auto zeroEquation() -> void {
-        // Flip before adding the RS variable so that it stays positive
         expression.flipAllSigns();
 
         expression + Variable(std::move(constraintVariable));
@@ -85,7 +84,7 @@ private:
     [[nodiscard]] auto getVariableKind(const VarKind &kind) const -> std::optional<Variable<T>*> {
         auto vars = expression.getInnerVariables();
 
-        auto it = std::find_if(
+        auto it = std::ranges::find_if(
             vars.begin(),
             vars.end(),
             [kind](Variable<T> var) {

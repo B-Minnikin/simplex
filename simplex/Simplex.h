@@ -4,7 +4,6 @@
 
 #ifndef LINEAR_PROGRAMMING_SIMPLEX_H
 #define LINEAR_PROGRAMMING_SIMPLEX_H
-#include <memory>
 #include <vector>
 
 #include "Tableau.h"
@@ -20,7 +19,7 @@ public:
         const Constraint<T> objectiveFunction,
         const std::vector<Constraint<T>> constraints
         )
-            : constraints(constraints) ,
+            : constraints(constraints),
               objectiveFunction(objectiveFunction),
               objectiveType(objType)
         { }

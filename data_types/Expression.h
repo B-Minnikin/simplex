@@ -91,7 +91,6 @@ public:
         return variables[idMap.at(id)];
     }
 
-    // TODO - reference of vector
     [[nodiscard]] auto getInnerVariables() const -> std::vector<Variable<T>> {
         return variables;
     }
@@ -117,7 +116,6 @@ private:
         }
 
         if (idMap.contains(var.getId())) {
-            // TODO - handle clash
             return;
         }
 
