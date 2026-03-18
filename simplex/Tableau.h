@@ -118,7 +118,7 @@ public:
 
             auto oneCount = 0;
 
-            for (int rowIndex = 1; rowIndex < rowCount; rowIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 auto elementIndex = rowIndex * columnCount + primaryColumnIndex;
                 auto coefficient = tableauCoefficients[elementIndex];
 
@@ -170,12 +170,13 @@ public:
             return;
         }
 
-        for (int i = 0; i < rowCount; i++) {
+        handlePivotRow(pivotRowIndex, pivotColumnIndex, pivotRowIndex);
+        for (auto i = 0; i < rowCount; i++) {
             if (i == pivotRowIndex) {
                 continue;
             }
 
-            performPivot(pivotColumnIndex, pivotRowIndex, i);
+            handleRow(i, pivotColumnIndex, pivotRowIndex);
         }
 
         // TODO - iterate the other rows and calculate
@@ -200,6 +201,53 @@ public:
         // return a new objective function which matches the solution coefficients
     }
 
+    auto printTableau() const -> void {
+        if (tableauCoefficients.empty() || vars.empty()) return;
+
+        const int cols = static_cast<int>(vars.size());
+        const int rows = static_cast<int>(tableauCoefficients.size()) / cols;
+
+        // Determine column widths: max of header length or formatted value length
+        constexpr int precision = 4;
+        std::vector<int> colWidths(cols);
+
+        for (int j = 0; j < cols; ++j) {
+            colWidths[j] = static_cast<int>(vars[j].size());
+            for (int i = 0; i < rows; ++i) {
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(precision) << tableauCoefficients[i * cols + j];
+                colWidths[j] = std::max(colWidths[j], static_cast<int>(oss.str().size()));
+            }
+            colWidths[j] += 2; // padding
+        }
+
+        // Header
+        for (int j = 0; j < cols; ++j)
+            std::cout << std::setw(colWidths[j]) << std::right << vars[j];
+        std::cout << '\n';
+
+        // Separator
+        int totalWidth = 0;
+        for (int w : colWidths) totalWidth += w;
+        std::cout << std::string(totalWidth, '-') << '\n';
+
+        // Rows
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+                std::cout << std::setw(colWidths[j]) << std::right
+                          << std::fixed << std::setprecision(precision)
+                          << tableauCoefficients[i * cols + j];
+            }
+            std::cout << '\n';
+
+            // Separate objective function from constraints
+            if (i == 0)
+                std::cout << std::string(totalWidth, '-') << '\n';
+        }
+
+        std::cout << '\n';
+    }
+
 private:
     // TODO - split vars from var instances
     // these should be instances
@@ -211,11 +259,41 @@ private:
     int columnCount;
     int rowCount;
 
-    auto printTableau() const -> void {
-        // TODO - implement
-        // print symbol headers
-        // iterate over every element
-        // print coefficient
+    auto handlePivotRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
+        T pivotElement = tableauCoefficients[pivotRowIndex * columnCount + pivotColumnIndex];
+
+        for (auto i = 0; i < columnCount; i++) {
+            auto columnIndex = thisRowIndex * columnCount + i;
+            tableauCoefficients[columnIndex] /= pivotElement;
+        }
+    }
+
+    auto handleRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
+        T pivotElement = tableauCoefficients[pivotRowIndex * columnCount + pivotColumnIndex];
+
+        auto comp = pivotElement * -1;
+
+        auto shadowPivotIndex = thisRowIndex * columnCount + pivotColumnIndex;
+        auto thisElement = tableauCoefficients[shadowPivotIndex];
+        tableauCoefficients[shadowPivotIndex] += pivotElement * thisElement * -1;
+
+        // To obtain a zero in the entry first above the pivot element, we multiply the second row by -1 and add it to row 1.
+        // To obtain a zero in the element below the pivot, we multiply the second row by 40 and add it to the last row.
+
+        for (auto i = 0; i < columnCount; i++) {
+            if (i == pivotColumnIndex) {
+                // We should have already handled the pivot column
+                continue;
+            }
+
+            auto pivotRowMatchingIndex = pivotRowIndex * columnCount + i;
+            T matchingPivotRowElement = tableauCoefficients[pivotRowMatchingIndex];
+
+            auto columnIndex = thisRowIndex * columnCount + i;
+            auto thisElementLoop = tableauCoefficients[columnIndex];
+
+            tableauCoefficients[columnIndex] += matchingPivotRowElement * thisElement * -1;
+        }
     }
 
     // TODO - rework
@@ -334,8 +412,37 @@ private:
         }
     }
 
-    auto zeroOtherRows(const int columnIndex, const int rowIndex) const -> void {
-        auto pivotElementIndex = rowCount * rowIndex + columnIndex;
+    auto divideAllInRow(T value, const int rowIndex) -> void {
+        if (value == 0) {
+            return;
+        }
+
+        const auto startIndex = rowIndex * columnCount;
+        const auto endIndex = rowIndex * columnCount + columnCount;
+
+        for (int i = startIndex; i < endIndex; i++) {
+            tableauCoefficients[i] /= value;
+        }
+    }
+
+    auto divideAllInRowByPivotRow(const int thisRowIndex, const int pivotRowIndex) -> void {
+        auto currentRowIndex = thisRowIndex * columnCount;
+        auto currentPivotRowIndex = pivotRowIndex * columnCount;
+
+        for (int i = currentRowIndex; i < columnCount; i++) {
+            auto currentPivotRowElement = tableauCoefficients[currentPivotRowIndex];
+
+            if (currentPivotRowElement != 0) {
+                tableauCoefficients[currentRowIndex] /= currentPivotRowElement;
+            }
+
+            currentRowIndex++;
+            currentPivotRowIndex++;
+        }
+    }
+
+    auto zeroOtherElementsInColumn(const int columnIndex, const int rowIndex) -> void {
+        auto pivotElementIndex = columnCount * rowIndex + columnIndex;
         auto pivotElement = tableauCoefficients[pivotElementIndex];
 
         for (int i = 0; i < rowCount; i++) {
