@@ -8,6 +8,7 @@
 #include <vector>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 
 #include "../data_types/Expression.h"
 
@@ -104,19 +105,19 @@ public:
     [[nodiscard]] auto getFinalObjective() const -> std::vector<Variable<T>> {
         std::vector<Variable<T>> finalVariables = {};
 
-        for (int primaryColumnIndex = 0; primaryColumnIndex < primaryVariableCount; primaryColumnIndex++) {
-            const auto thisVarIndex = primaryColumnIndex % (columnCount - primaryVariableCount);
+        for (auto i = 0; i < vars.size() - 1; i++) {
+            if (!isColumnBasic(i)) {
+                continue;
+            }
+
+            const auto thisVarIndex = i % (columnCount - vars.size() - 1);
             auto thisVarSymbol = vars[thisVarIndex];
 
-            auto oneCount = 0;
-
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-                auto elementIndex = rowIndex * columnCount + primaryColumnIndex;
+                auto elementIndex = rowIndex * columnCount + i;
                 auto coefficient = tableauCoefficients[elementIndex];
 
                 if (coefficient == 1) {
-                    oneCount += 1;
-
                     auto solutionIndex = rowIndex * columnCount + columnCount - 1;
                     auto solution = tableauCoefficients[solutionIndex];
 
@@ -124,10 +125,6 @@ public:
                         .coefficient = solution,
                         .symbol = thisVarSymbol
                     }));
-                }
-
-                if (oneCount > 1) {
-                    break;
                 }
             }
         }
