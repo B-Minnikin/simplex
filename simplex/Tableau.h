@@ -287,7 +287,7 @@ private:
         auto smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
 
         // Do not include the solution column (last)
-        for (int i = 0; i < columnCount - 1; i++) {
+        for (int i = 0; i < vars.size() - 1; i++) {
             if (tableauCoefficients[i] < smallestCoefficient) {
                 smallestCoefficient = tableauCoefficients[i];
             }

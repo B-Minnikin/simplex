@@ -36,6 +36,10 @@ public:
         return !(hasCoefficientOfOne && hasFewerThanTwoExpressions);
     }
 
+    auto configureAsObjective() -> void {
+        constraintVariable.setKind(Objective);
+    }
+
     [[nodiscard]] auto getExpression() -> Expression<T> {
         return expression;
     }

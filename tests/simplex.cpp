@@ -6,6 +6,7 @@
 
 #include "../cmake-build-debug/_deps/googletest-src/googlemock/include/gmock/gmock-matchers.h"
 #include "../simplex/Simplex.h"
+#include "../data_types/Overloads.h"
 
 TEST(Simplex, TahaCases) {
     const auto x = "x";
@@ -50,29 +51,23 @@ TEST(Simplex, TahaCases3_2_1) {
 }
 
 TEST(Simplex, LibreTextsExample) {
-    const std::string z = "z";
-    const std::string x1 = "x1";
-    const std::string x2 = "x2";
+    const auto z = objectiveVar("z");
+    const auto x1 = var("x1");
+    const auto x2 = var("x2");
 
-    const auto objective = Expression(Variable<double>({ .coefficient = 40.0, .symbol = x1 }))
-        + Variable<double>({ .coefficient = 30.0, .symbol = x2 })
-        == Variable<double>({  .symbol = z , .kind = Objective });
+    const auto objective = 40.0 * x1 + 30.0 * x2 == z;
 
     const std::vector constraints = {
-        Expression(Variable<double>({ .symbol = x1 }))
-            + Variable<double>({ .symbol = x2 })
-            <= Variable<double>({ .coefficient = 12.0, .kind = Solution }),
-        Expression(Variable<double>({ .coefficient = 2.0, .symbol = x1 }))
-            + Variable<double>({ .symbol = x2 })
-            <= Variable<double>({ .coefficient = 16.0, .kind = Solution }),
+        x1 + x2 <= 12.0,
+        2.0 * x1 + x2 <= 16.0
     };
 
     const auto simplex = Simplex(Maximise, objective, constraints);
     const auto result = simplex.solve();
 
     EXPECT_THAT(result, testing::UnorderedElementsAre(
-        Variable<double>({ .coefficient = 400.0, .symbol = z }),
-        Variable<double>({ .coefficient = 4.0, .symbol = x1 }),
-        Variable<double>({ .coefficient = 8.0, .symbol = x2 })
+        400.0 * z,
+        4.0 * x1,
+        8.0 * x2
     ));
 }

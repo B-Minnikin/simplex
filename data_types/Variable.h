@@ -42,12 +42,20 @@ public:
         return coefficient;
     }
 
+    auto setCoefficient(T c) -> void {
+        coefficient = c;
+    }
+
     [[nodiscard]] auto getSymbol() const -> std::string {
         return symbol;
     }
 
     [[nodiscard]] auto getKind() const -> VarKind {
         return kind;
+    }
+
+    auto setKind(const VarKind otherKind) -> void {
+        kind = otherKind;
     }
 
 protected:
