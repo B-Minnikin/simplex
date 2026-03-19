@@ -52,23 +52,23 @@ public:
     }
 
     auto operator<(Variable<T> var) -> Constraint<T> {
-        return Constraint<T>(*this, lt, var);
+        return Constraint<T>(*this, var, lt);
     }
 
     auto operator<=(Variable<T> var) -> Constraint<T> {
-        return Constraint<T>(*this, lte, var);
+        return Constraint<T>(*this, var, lte);
     }
 
     auto operator>(Variable<T> var) -> Constraint<T> {
-        return Constraint<T>(*this, gt, var);
+        return Constraint<T>(*this, var, gt);
     }
 
     auto operator>=(Variable<T> var) -> Constraint<T> {
-        return Constraint<T>(*this, gte, var);
+        return Constraint<T>(*this, var, gte);
     }
 
     auto operator==(Variable<T> var) -> Constraint<T> {
-        return Constraint<T>(*this, eq, var);
+        return Constraint<T>(*this, var, eq);
     }
 
     [[nodiscard]] auto getSize() const -> size_t {

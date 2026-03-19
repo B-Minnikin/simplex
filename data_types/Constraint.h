@@ -13,9 +13,9 @@ class Constraint {
 public:
     Constraint(
         Expression<T> expr,
-        const EqualityType equality,
-        Variable<T> constraintVariable)
-            : expression(expr), equality(equality), constraintVariable(constraintVariable) { }
+        Variable<T> constraintVariable,
+        const EqualityType equality)
+            : expression(expr), constraintVariable(constraintVariable), equality(equality) { }
 
     [[nodiscard]] auto isEquation() const -> bool {
         if (equality == eq) {
