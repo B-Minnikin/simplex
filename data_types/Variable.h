@@ -46,6 +46,10 @@ public:
         coefficient = c;
     }
 
+    auto negateCoefficient() -> void {
+        coefficient *= -1;
+    }
+
     [[nodiscard]] auto getSymbol() const -> std::string {
         return symbol;
     }

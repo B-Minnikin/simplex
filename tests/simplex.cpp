@@ -13,44 +13,52 @@ TEST(Simplex, TahaCases) {
     const auto y = "y";
     const auto z = "z";
 
-    auto objective = Expression(Variable<double>({ .coefficient = 1.0, .symbol = x }))
-        + Variable<double>({ .coefficient = 2.0, .symbol = y })
-        - Variable<double>({ .coefficient = 2.3, .symbol = z })
-        < Variable<double>({ .coefficient = 2.0, .kind = Objective });
+TEST(Simplex, TahaCases2_2_2) {
+    const auto z = objectiveVar("z");
+    const auto x1 = var("x1");
+    const auto x2 = var("x2");
 
-    // auto simplex = Simplex<double>(objective);
-    // auto result = simplex.solve();
+    const auto objective = 0.3 * x1 + 0.9 * x2 == z;
 
-    // TODO
-    EXPECT_EQ(1, 2);
+    const std::vector constraints {
+        x1 + x2 >= 800.0,
+        .21 * x1 - .3 * x2 <= 0.0,
+        .03 * x1  - .01 * x2 >= 0.0,
+    };
+
+    const auto simplex = Simplex(Minimise, objective, constraints);
+    auto result = simplex.solve();
+
+    EXPECT_THAT(result, testing::UnorderedElementsAre(
+        437.64 * z,
+        470.6 * x1,
+        329.4 * x2
+    ));
 }
 
 TEST(Simplex, TahaCases3_2_1) {
-    const std::string z = "z";
-    const std::string x1 = "x1";
-    const std::string x2 = "x2";
+    const auto z = objectiveVar("z");
+    const auto x1 = var("x1");
+    const auto x2 = var("x2");
 
-    const auto objective = Expression(Variable<double>({ .coefficient = 2.0, .symbol = x1 }))
-        + Variable<double>({ .coefficient = 3.0, .symbol = x2 })
-        == Variable<double>({ .symbol = z, .kind = Objective });
+    const auto objective = 2.0 * x1 + 3.0 * x2 == z;
 
-    const std::vector constraints = {
-        Expression(Variable<double>({ .coefficient = 2.0, .symbol = x1 }))
-            + Variable<double>({ .symbol = x2 })
-            <= Variable<double>({ .coefficient = 4.0, .kind = Solution }),
-        Expression(Variable<double>({ .symbol = x1 }))
-            + Variable<double>({ .coefficient = 2.0, .symbol = x2 })
-            <= Variable<double>({ .coefficient = 5.0, .kind = Solution }),
+    const std::vector constraints {
+        2.0 * x1 + x2 <= 4.0,
+        x1 + 2.0 * x2 <= 5.0,
     };
 
-    const auto simplex = Simplex<double>(Maximise, objective, constraints);
+    const auto simplex = Simplex(Maximise, objective, constraints);
     auto result = simplex.solve();
 
-    // TODO
-    EXPECT_EQ(1, 2);
+    EXPECT_THAT(result, testing::UnorderedElementsAre(
+        8.0 * z,
+        1.0 * x1,
+        2.0 * x2
+    ));
 }
 
-TEST(Simplex, LibreTextsExample) {
+TEST(Simplex, LibreTextsExample4_2_1) {
     const auto z = objectiveVar("z");
     const auto x1 = var("x1");
     const auto x2 = var("x2");

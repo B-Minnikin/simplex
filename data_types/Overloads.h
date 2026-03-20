@@ -36,17 +36,37 @@ template <typename T = double>
 }
 
 template <typename T = double>
-[[nodiscard]] auto operator <=(Expression<T> expr, T c) -> Constraint<T> {
-    const auto var = Variable<T>({ .coefficient = c, .kind = Solution });
+[[nodiscard]] auto operator-(Variable<T> lv, Variable<T> rv) -> Expression<T> {
+    rv.negateCoefficient();
 
-    return Constraint<T>(expr, std::move(var), lte);
+    return Expression<T>({ lv, rv });
+}
+
+template <typename T = double>
+[[nodiscard]] auto operator <=(Expression<T> expr, T c) -> Constraint<T> {
+    return makeConstraint(expr, c, lte);
 }
 
 template <typename T = double>
 [[nodiscard]] auto operator <(Expression<T> expr, T c) -> Constraint<T> {
+    return makeConstraint(expr, c, lt);
+}
+
+template <typename T = double>
+[[nodiscard]] auto operator >=(Expression<T> expr, T c) -> Constraint<T> {
+    return makeConstraint(expr, c, gte);
+}
+
+template <typename T = double>
+[[nodiscard]] auto operator >(Expression<T> expr, T c) -> Constraint<T> {
+    return makeConstraint(expr, c, gt);
+}
+
+template <typename T = double>
+[[nodiscard]] auto makeConstraint(Expression<T> expr, T c, EqualityType equality) -> Constraint<T> {
     const auto var = Variable<T>({ .coefficient = c, .kind = Solution });
 
-    return Constraint<T>(expr, std::move(var), lt);
+    return Constraint<T>(expr, std::move(var), equality);
 }
 
 #endif //LINEAR_PROGRAMMING_OVERLOADS_H
