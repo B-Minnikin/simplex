@@ -28,13 +28,12 @@ public:
         auto tableau = Tableau<T>(objectiveType, objectiveFunction, constraints);
 
         tableau.printTableau();
+        tableau.print();
 
         while (!tableau.isSolved()) {
             tableau.pivot();
-            tableau.printTableau();
+            tableau.print();
         }
-
-        tableau.printTableau();
 
         return tableau.getFinalObjective();
     }

@@ -153,7 +153,7 @@ public:
         }
     }
 
-    auto printTableau() const -> void {
+    auto print() const -> void {
         if (tableauCoefficients.empty() || vars.empty()) return;
 
         const int cols = static_cast<int>(vars.size());
