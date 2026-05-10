@@ -36,6 +36,18 @@ public:
         return !(hasCoefficientOfOne && hasFewerThanTwoExpressions);
     }
 
+    [[nodiscard]] auto isRequiresSlackVariable() const -> bool {
+        return equality == lte;
+    }
+
+    [[nodiscard]] auto isRequiresSurplusVariable() const -> bool {
+        return equality == gte;
+    }
+
+    [[nodiscard]] auto isRequiresArtificialVariable() const -> bool {
+        return equality == gte || equality == eq;
+    }
+
     auto configureAsObjective() -> void {
         constraintVariable.setKind(Objective);
     }

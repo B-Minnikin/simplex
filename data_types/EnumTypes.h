@@ -25,6 +25,7 @@ enum VarKind {
     Solution,
     Slack,
     Artificial,
+    Surplus,
 };
 
 #endif //LINEAR_PROGRAMMING_ENUMTYPES_H

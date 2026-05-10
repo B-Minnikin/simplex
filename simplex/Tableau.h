@@ -13,24 +13,25 @@
 #include "../data_types/Expression.h"
 
 
-template <typename T>
+template<typename T>
 class Tableau {
 public:
     Tableau(
         const ObjectiveType objectiveType,
         Constraint<T> objectiveFunction,
         std::vector<Constraint<T>> constraints
-    ) {
-        reformulateObjective(objectiveFunction);
+    ) : primaryObjective(objectiveFunction) {
+        reformulateObjective(primaryObjective);
 
         if (objectiveType == Minimise) {
-            objectiveFunction.negateExpression();
+            primaryObjective.negateExpression();
         }
 
         auto slackCount = 0;
+        extractVariables(primaryObjective.getExpression());
 
-        extractVariables(objectiveFunction.getExpression());
-        primaryVariableCount = vars.size();
+        addSlacksToConstraints(constraints);
+        subtractSurplusesFromConstraints(constraints);
 
         // Create the slack variables
         for (auto i = 1; auto &constraint : constraints) {
@@ -38,6 +39,19 @@ public:
                 slackCount++;
                 // TODO - manage variable symbol clash
                 constraint.addVariable(Variable<T>({ .symbol = std::format("s{}", i), .kind = Slack }));
+        if (isRequiresTwoPhase(constraints)) {
+            addArtificialsToConstraints(constraints);
+        }
+
+        for (auto i = 1; auto &constraint: constraints) {
+            const auto equality = constraint.getEquality();
+
+            if (equality == eq || equality == gte) {
+                constraint.addVariable(Variable<T>({.symbol = std::format("a{}", i), .kind = Artificial}));
+            }
+
+            if (equality == gte) {
+                constraint.addVariable(Variable<T>({.symbol = std::format("y{}", i), .kind = Surplus}));
             }
 
             extractVariables(constraint.getExpression());
@@ -45,8 +59,9 @@ public:
         }
 
         // Sort the variables
-        auto objectiveVariable = objectiveFunction.getObjectiveVariable();
+        auto objectiveVariable = primaryObjective.getObjectiveVariable();
         if (!objectiveVariable) {
+            std::cout << "Failed to get objective variable\n";
             return;
         }
         std::string symbol = objectiveVariable.value()->getSymbol();
@@ -61,7 +76,7 @@ public:
 
         // Make the first objective result row
         for (int i = 0; i < vars.size(); i++) {
-            auto var = objectiveFunction.findVariable(vars[i]);
+            auto var = primaryObjective.findVariable(vars[i]);
             if (!var) {
                 tableauCoefficients[i] = 0;
                 continue;
@@ -81,8 +96,7 @@ public:
                 continue;
             }
 
-
-            auto thisConstraint = constraints[constraintIndex];
+            const auto& thisConstraint = constraints[constraintIndex];
             auto varSymbol = vars[i % columnCount];
 
             auto matchingVar = thisConstraint.findVariable(varSymbol);
@@ -96,6 +110,47 @@ public:
             auto thisCoefficient = matchingVar.value()->getCoefficient();
             tableauCoefficients[i] = thisCoefficient;
         }
+    }
+
+
+    auto addSlacksToConstraints(std::vector<Constraint<T> > &constraints) -> void {
+        for (auto i = 1; auto &constraint: constraints) {
+            if (constraint.isRequiresSlackVariable()) {
+                constraint.addVariable(Variable<T>({.symbol = std::format("s{}", i), .kind = Slack}));
+            }
+
+            extractVariables(constraint.getExpression());
+            i++;
+        }
+    }
+
+    auto subtractSurplusesFromConstraints(std::vector<Constraint<T> > &constraints) -> void {
+        for (auto i = 1; auto &constraint: constraints) {
+            if (!constraint.isRequiresSurplusVariable()) {
+                continue;
+            }
+
+            constraint.addVariable(Variable<T>({.coefficient = -1, .symbol = std::format("y{}", i), .kind = Surplus}));
+            i++;
+        }
+    }
+
+    auto addArtificialsToConstraints(std::vector<Constraint<T> > &constraints) const -> std::vector<Variable<T> > {
+        std::vector<Variable<T> > addedVariables = {};
+
+        for (auto i = 1; auto &constraint: constraints) {
+            if (!constraint.isRequiresArtificialVariable()) {
+                continue;
+            }
+
+            const auto symbol = std::format("a{}", i);
+            const auto var = Variable<T>({.symbol = std::move(symbol), .kind = Artificial});
+            constraint.addVariable(var);
+            addedVariables.push_back(var);
+            i++;
+        }
+
+        return addedVariables;
     }
 
     [[nodiscard]] auto isSolved() const -> bool {
