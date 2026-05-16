@@ -17,7 +17,7 @@ public:
     explicit Simplex(
         const ObjectiveType objType,
         const Constraint<T> objectiveFunction,
-        const std::vector<Constraint<T>> constraints
+        std::vector<Constraint<T>> constraints
         )
             : constraints(constraints),
               objectiveFunction(objectiveFunction),
@@ -25,10 +25,23 @@ public:
         { }
 
     [[nodiscard]] auto solve() const -> std::vector<Variable<T>> {
+    [[nodiscard]] auto solve() -> std::vector<Variable<T>> {
         auto tableau = Tableau<T>(objectiveType, objectiveFunction, constraints);
 
         tableau.printTableau();
         tableau.print();
+
+        if (tableau.isRequiresTwoPhase(constraints)) {
+            tableau.initPhaseOne(constraints);
+
+            while (!tableau.isPhaseOneSolved()) {
+                tableau.pivot();
+            }
+
+            tableau.print();
+
+            tableau.prepareForPhaseTwo(constraints);
+        }
 
         while (!tableau.isSolved()) {
             tableau.pivot();

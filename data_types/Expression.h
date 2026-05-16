@@ -83,6 +83,15 @@ public:
         return &variables[symbolMap.at(symbol)];
     }
 
+    auto removeVariableBySymbol(const std::string &symbol) -> void {
+        const auto symbolMapIndex = symbolMap.at(symbol);
+        const auto variableIndex = idMap.at(symbolMapIndex);
+
+        symbolMap.erase(symbol);
+        variables.erase(variables.begin() + variableIndex);
+        idMap.erase(symbolMapIndex);
+    }
+
     [[nodiscard]] auto findVariableById(const int id) const -> std::optional<Variable<T>> {
         if (!idMap.contains(id)) {
             return std::nullopt;

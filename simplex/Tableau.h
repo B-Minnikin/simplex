@@ -9,6 +9,8 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <format>
+#include <algorithm>
 
 #include "../data_types/Expression.h"
 
@@ -19,7 +21,7 @@ public:
     Tableau(
         const ObjectiveType objectiveType,
         Constraint<T> objectiveFunction,
-        std::vector<Constraint<T>> constraints
+        std::vector<Constraint<T>> &constraints
     ) : primaryObjective(objectiveFunction) {
         reformulateObjective(primaryObjective);
 
@@ -27,36 +29,10 @@ public:
             primaryObjective.negateExpression();
         }
 
-        auto slackCount = 0;
         extractVariables(primaryObjective.getExpression());
 
         addSlacksToConstraints(constraints);
         subtractSurplusesFromConstraints(constraints);
-
-        // Create the slack variables
-        for (auto i = 1; auto &constraint : constraints) {
-            if (constraint.isEquation()) {
-                slackCount++;
-                // TODO - manage variable symbol clash
-                constraint.addVariable(Variable<T>({ .symbol = std::format("s{}", i), .kind = Slack }));
-        if (isRequiresTwoPhase(constraints)) {
-            addArtificialsToConstraints(constraints);
-        }
-
-        for (auto i = 1; auto &constraint: constraints) {
-            const auto equality = constraint.getEquality();
-
-            if (equality == eq || equality == gte) {
-                constraint.addVariable(Variable<T>({.symbol = std::format("a{}", i), .kind = Artificial}));
-            }
-
-            if (equality == gte) {
-                constraint.addVariable(Variable<T>({.symbol = std::format("y{}", i), .kind = Surplus}));
-            }
-
-            extractVariables(constraint.getExpression());
-            i++;
-        }
 
         // Sort the variables
         auto objectiveVariable = primaryObjective.getObjectiveVariable();
@@ -68,22 +44,17 @@ public:
         std::stable_partition(vars.begin(), vars.end(), [&symbol](const std::string &v) { return v != symbol; });
 
         // Create the RHS var
-        extractVariables(Expression<T>(Variable<T>({ .symbol = "RHS", .kind = Solution })));
+        extractVariables(Expression<T>(Variable<T>({.symbol = "RHS", .kind = Solution})));
 
+        initTableau(primaryObjective, constraints);
+    }
+
+    auto initTableau(Constraint<T> &objective, std::vector<Constraint<T>> &constraints) -> void {
         columnCount = static_cast<int>(vars.size());
         rowCount = static_cast<int>(constraints.size()) + 1;
         tableauCoefficients = std::vector<T>(columnCount * rowCount);
 
-        // Make the first objective result row
-        for (int i = 0; i < vars.size(); i++) {
-            auto var = primaryObjective.findVariable(vars[i]);
-            if (!var) {
-                tableauCoefficients[i] = 0;
-                continue;
-            }
-
-            tableauCoefficients[i] = var.value()->getCoefficient();
-        }
+        modifyTableauObjective(objective);
 
         for (int i = columnCount; i < tableauCoefficients.size(); i++) {
             auto constraintIndex = std::floor(i / columnCount) - 1;
@@ -112,6 +83,44 @@ public:
         }
     }
 
+    auto modifyTableauObjective(Constraint<T> &objective) -> void {
+        // Make the first objective result row
+        for (int i = 0; i < vars.size(); i++) {
+            auto var = objective.findVariable(vars[i]);
+            if (!var) {
+                tableauCoefficients[i] = 0;
+                continue;
+            }
+
+            tableauCoefficients[i] = var.value()->getCoefficient();
+        }
+    }
+
+    auto initPhaseOne(std::vector<Constraint<T> > &constraints) -> void {
+        const auto artificialVariables = addArtificialsToConstraints(constraints);
+
+        if (artificialVariables.size() > 0) {
+            auto expr = Expression<T>(artificialVariables[0]);
+
+            if (artificialVariables.size() > 1) {
+                for (int i = 1; i < artificialVariables.size(); i++) {
+                    expr = expr + artificialVariables[i];
+                }
+            }
+
+            phaseOneObjective = expr == 0.0;
+            if (!phaseOneObjective) {
+                return;
+            }
+
+            reformulateObjective(phaseOneObjective.value());
+            extractVariables(expr);
+        }
+
+        std::stable_partition(vars.begin(), vars.end(), [](const std::string &v) { return v != "RHS"; });
+
+        initTableau(phaseOneObjective.value(), constraints);
+    }
 
     auto addSlacksToConstraints(std::vector<Constraint<T> > &constraints) -> void {
         for (auto i = 1; auto &constraint: constraints) {
@@ -131,6 +140,7 @@ public:
             }
 
             constraint.addVariable(Variable<T>({.coefficient = -1, .symbol = std::format("y{}", i), .kind = Surplus}));
+            extractVariables(constraint.getExpression());
             i++;
         }
     }
@@ -159,6 +169,45 @@ public:
 
     [[nodiscard]] auto getFinalObjective() const -> std::vector<Variable<T>> {
         std::vector<Variable<T>> finalVariables = {};
+    [[nodiscard]] auto isPhaseOneSolved() const -> bool {
+        // Do not include the solution column (last)
+        for (int i = 0; i < vars.size() - 1; i++) {
+            if (tableauCoefficients[i] != 0) {
+                return false;
+            }
+
+            const auto varSymbol = vars[i];
+            auto var = phaseOneObjective.value().findVariable(varSymbol);
+            if (!var) {
+                continue;
+            }
+
+            if (var.value()->getKind() != Artificial) {
+                continue;
+            }
+
+            // Artificial columns cannot be basic
+            if (isColumnBasic(i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    [[nodiscard]] auto isPhaseOneValid(const std::vector<int> &artificialColumns) const -> bool {
+        // All artificial variables must be non-basic
+        for (const int columnIndex : artificialColumns) {
+            if (!isColumnBasic(columnIndex)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    [[nodiscard]] auto getFinalObjective() const -> std::vector<Variable<T> > {
+        std::vector<Variable<T> > finalVariables = {};
 
         for (auto i = 0; i < vars.size() - 1; i++) {
             if (!isColumnBasic(i)) {
@@ -242,8 +291,8 @@ public:
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < cols; ++j) {
                 std::cout << std::setw(colWidths[j]) << std::right
-                          << std::fixed << std::setprecision(precision)
-                          << tableauCoefficients[i * cols + j];
+                        << std::fixed << std::setprecision(precision)
+                        << tableauCoefficients[i * cols + j];
             }
             std::cout << '\n';
 
@@ -255,11 +304,26 @@ public:
         std::cout << '\n';
     }
 
+    // Any instance of == or >= in a constraint means that the two-phase method is required
+    [[nodiscard]] auto isRequiresTwoPhase(const std::vector<Constraint<T>> &constraints) const -> bool {
+        for (auto &constraint: constraints) {
+            const auto equality = constraint.getEquality();
+
+            if (equality == eq || equality == gte) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 private:
     std::vector<std::string> vars = {};
     std::vector<T> tableauCoefficients;
 
-    int primaryVariableCount = 0;
+    Constraint<T> primaryObjective;
+    std::optional<Constraint<T>> phaseOneObjective;
+
     int columnCount;
     int rowCount;
 
@@ -300,16 +364,18 @@ private:
         }
     }
 
-   static auto reformulateObjective(Constraint<T> &objectiveFunction) -> void {
+    static auto reformulateObjective(Constraint<T> &objectiveFunction) -> void {
         objectiveFunction.zeroEquation();
     }
 
     auto extractVariables(const Expression<T> &expr) -> void {
         // TODO - handle multiple instances in the same expression
 
-        for (auto &var : expr.getInnerVariables()) {
+        for (auto &var: expr.getInnerVariables()) {
             const auto varSymbol = var.getSymbol();
-            auto it = std::find_if(vars.begin(), vars.end(), [varSymbol](const std::string &symbol) -> bool { return symbol == varSymbol; });
+            auto it = std::find_if(vars.begin(), vars.end(), [varSymbol](const std::string &symbol) -> bool {
+                return symbol == varSymbol;
+            });
 
             if (it == vars.end()) {
                 vars.push_back(varSymbol);
@@ -398,7 +464,7 @@ private:
         }
     }
 
-    auto divideAllInRow(T value, const int rowIndex) -> void {
+    auto divideRowByValue(T value, const int rowIndex) -> void {
         if (value == 0) {
             return;
         }
@@ -411,8 +477,8 @@ private:
         }
     }
 
-    auto divideAllInRowByPivotRow(const int thisRowIndex, const int pivotRowIndex) -> void {
-        auto currentRowIndex = thisRowIndex * columnCount;
+    auto divideRowByPivotRow(const int rowIndex, const int pivotRowIndex) -> void {
+        auto currentRowIndex = rowIndex * columnCount;
         auto currentPivotRowIndex = pivotRowIndex * columnCount;
 
         for (int i = currentRowIndex; i < columnCount; i++) {
@@ -459,6 +525,52 @@ private:
         }
 
         return -1;
+    }
+
+    auto removeArtificialVariables(std::vector<Constraint<T>> &constraints) -> void {
+        // Collect each variable index
+        std::set<int> varIndices = {};
+        std::set<std::string> varSymbols = {};
+        std::vector<std::string> newVars = {};
+        for (int i = 0; i < vars.size() - 1; i++) {
+            const auto varSymbol = vars[i];
+            auto var = phaseOneObjective.value().findVariable(varSymbol);
+            if (!var) {
+                continue;
+            }
+
+            if (var.value()->getKind() != Artificial) {
+                newVars.push_back(varSymbol);
+                continue;
+            }
+
+            varIndices.emplace(i);
+            varSymbols.emplace(varSymbol);
+        }
+        vars = newVars;
+
+        // Recalculate column count
+        columnCount = static_cast<int>(vars.size());
+
+        // Remove artificials from the tableau
+        std::vector<T> newTableauCoefficients = std::vector<T>(columnCount * rowCount);
+        for (int i = 0; i < tableauCoefficients.size(); i++) {
+            if (const auto columnIndex = i % columnCount; varIndices.contains(columnIndex)) {
+                continue;
+            }
+
+            const auto coefficient = tableauCoefficients[i];
+            newTableauCoefficients.push_back(coefficient);
+        }
+
+        tableauCoefficients = newTableauCoefficients;
+
+        // rem from constraints
+        for (auto &constraint : constraints) {
+            for (auto &symbol : varSymbols) {
+                constraint.removeVariable(symbol);
+            }
+        }
     }
 };
 

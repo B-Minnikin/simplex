@@ -63,6 +63,11 @@ template <typename T = double>
 }
 
 template <typename T = double>
+[[nodiscard]] auto operator ==(Expression<T> expr, T c) -> Constraint<T> {
+    return makeConstraint(expr, c, eq);
+}
+
+template <typename T = double>
 [[nodiscard]] auto makeConstraint(Expression<T> expr, T c, EqualityType equality) -> Constraint<T> {
     const auto var = Variable<T>({ .coefficient = c, .kind = Solution });
 

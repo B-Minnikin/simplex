@@ -80,6 +80,10 @@ public:
         expression = expression + Expression<T>(var);
     }
 
+    auto removeVariable(const std::string &symbol) -> void {
+        expression.removeVariableBySymbol(symbol);
+    }
+
     auto zeroEquation() -> void {
         expression.flipAllSigns();
 
