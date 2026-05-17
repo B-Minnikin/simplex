@@ -24,7 +24,7 @@ TEST(Simplex, TahaExample3_4_1) {
     const std::vector constraints {
         3.0 * x1 + x2 == 3.0,
         4.0 * x1 + 3.0 * x2 >= 6.0,
-        x1 +- 2.0 * x2 <= 4.0,
+        x1 + 2.0 * x2 <= 4.0,
     };
 
     auto simplex = Simplex(Minimise, objective, constraints);
