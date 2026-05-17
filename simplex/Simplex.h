@@ -24,7 +24,6 @@ public:
               objectiveType(objType)
         { }
 
-    [[nodiscard]] auto solve() const -> std::vector<Variable<T>> {
     [[nodiscard]] auto solve() -> std::vector<Variable<T>> {
         auto tableau = Tableau<T>(objectiveType, objectiveFunction, constraints);
 

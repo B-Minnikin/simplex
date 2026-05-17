@@ -13,6 +13,7 @@
 #include <algorithm>
 
 #include "../data_types/Expression.h"
+#include "../data_types/VarList.h"
 
 
 template<typename T>
@@ -68,7 +69,7 @@ public:
             }
 
             const auto& thisConstraint = constraints[constraintIndex];
-            auto varSymbol = vars[i % columnCount];
+            auto varSymbol = vars.at(i % columnCount);
 
             auto matchingVar = thisConstraint.findVariable(varSymbol);
 
@@ -86,7 +87,7 @@ public:
     auto modifyTableauObjective(Constraint<T> &objective) -> void {
         // Make the first objective result row
         for (int i = 0; i < vars.size(); i++) {
-            auto var = objective.findVariable(vars[i]);
+            auto var = objective.findVariable(vars.at(i));
             if (!var) {
                 tableauCoefficients[i] = 0;
                 continue;
@@ -116,8 +117,6 @@ public:
             reformulateObjective(phaseOneObjective.value());
             extractVariables(expr);
         }
-
-        std::stable_partition(vars.begin(), vars.end(), [](const std::string &v) { return v != "RHS"; });
 
         initTableau(phaseOneObjective.value(), constraints);
     }
@@ -176,7 +175,7 @@ public:
                 return false;
             }
 
-            const auto varSymbol = vars[i];
+            const auto varSymbol = vars.at(i);
             auto var = phaseOneObjective.value().findVariable(varSymbol);
             if (!var) {
                 continue;
@@ -215,7 +214,7 @@ public:
             }
 
             const auto thisVarIndex = i % (columnCount - vars.size() - 1);
-            auto thisVarSymbol = vars[thisVarIndex];
+            auto thisVarSymbol = vars.at(thisVarIndex);
 
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 auto elementIndex = rowIndex * columnCount + i;
@@ -268,7 +267,7 @@ public:
         std::vector<int> colWidths(cols);
 
         for (int j = 0; j < cols; ++j) {
-            colWidths[j] = static_cast<int>(vars[j].size());
+            colWidths[j] = static_cast<int>(vars.at(j).size());
             for (int i = 0; i < rows; ++i) {
                 std::ostringstream oss;
                 oss << std::fixed << std::setprecision(precision) << tableauCoefficients[i * cols + j];
@@ -279,7 +278,7 @@ public:
 
         // Header
         for (int j = 0; j < cols; ++j)
-            std::cout << std::setw(colWidths[j]) << std::right << vars[j];
+            std::cout << std::setw(colWidths[j]) << std::right << vars.at(j);
         std::cout << '\n';
 
         // Separator
@@ -318,7 +317,7 @@ public:
     }
 
 private:
-    std::vector<std::string> vars = {};
+    VarList vars {};
     std::vector<T> tableauCoefficients;
 
     Constraint<T> primaryObjective;
@@ -372,14 +371,7 @@ private:
         // TODO - handle multiple instances in the same expression
 
         for (auto &var: expr.getInnerVariables()) {
-            const auto varSymbol = var.getSymbol();
-            auto it = std::find_if(vars.begin(), vars.end(), [varSymbol](const std::string &symbol) -> bool {
-                return symbol == varSymbol;
-            });
-
-            if (it == vars.end()) {
-                vars.push_back(varSymbol);
-            }
+            vars.extractVariable(var);
         }
     }
 
@@ -533,7 +525,7 @@ private:
         std::set<std::string> varSymbols = {};
         std::vector<std::string> newVars = {};
         for (int i = 0; i < vars.size() - 1; i++) {
-            const auto varSymbol = vars[i];
+            const auto varSymbol = vars.at(i);
             auto var = phaseOneObjective.value().findVariable(varSymbol);
             if (!var) {
                 continue;

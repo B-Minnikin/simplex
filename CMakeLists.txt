@@ -31,6 +31,7 @@ add_executable(linear_programming main.cpp
         data_types/Primitive.h
         data_types/Value.h
         data_types/Overloads.h
+        data_types/VarList.h
 )
 
 target_link_libraries(
