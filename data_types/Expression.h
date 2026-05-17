@@ -104,7 +104,7 @@ public:
         return variables;
     }
 
-    [[nodiscard]] auto getInnerMap() const -> std::map<int, int> {
+    [[nodiscard]] auto getInnerMap() const -> std::unordered_map<int, int> {
         return idMap;
     }
 
@@ -116,8 +116,8 @@ public:
 
 private:
     std::vector<Variable<T>> variables = {};
-    std::map<std::string, int> symbolMap = {};
-    std::map<int, int> idMap = {};
+    std::unordered_map<std::string, int> symbolMap = {};
+    std::unordered_map<int, int> idMap = {};
     
     auto addVar(const Variable<T> var) -> void {
         if (symbolMap.contains(var.getSymbol())) {

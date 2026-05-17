@@ -27,20 +27,21 @@ public:
     [[nodiscard]] auto solve() -> std::vector<Variable<T>> {
         auto tableau = Tableau<T>(objectiveType, objectiveFunction, constraints);
 
-        tableau.printTableau();
-        tableau.print();
-
         if (tableau.isRequiresTwoPhase(constraints)) {
             tableau.initPhaseOne(constraints);
+            tableau.print();
 
             while (!tableau.isPhaseOneSolved()) {
                 tableau.pivot();
+                tableau.print();
             }
 
             tableau.print();
 
             tableau.prepareForPhaseTwo(constraints);
         }
+
+        tableau.print();
 
         while (!tableau.isSolved()) {
             tableau.pivot();
