@@ -377,23 +377,27 @@ private:
 
     [[nodiscard]] auto isColumnBasic(const int columnIndex) const -> bool {
         int oneCount = 0;
+        const auto epsilon = std::numeric_limits<T>::epsilon();
 
-        for (int i = 0; i < rowCount; i++) {
-            // TODO - need to check this
-            if (const int coefficient = tableauCoefficients[columnCount * i + columnIndex]; coefficient == 1) {
+        for (int i = 1; i < rowCount; i++) {
+            const auto coefficient = tableauCoefficients[columnCount * i + columnIndex];
+
+            // Is one
+            if (std::abs(coefficient - 1) <= epsilon) {
                 oneCount++;
 
                 if (oneCount > 1) {
                     return false;
                 }
             } else {
-                if (coefficient != 0) {
+                // Not zero
+                if (std::abs(coefficient) > epsilon) {
                     return false;
                 }
             }
         }
 
-        return true;
+        return oneCount == 1;
     }
 
     [[nodiscard]] auto getSmallestObjectiveCoefficient() const -> T {
