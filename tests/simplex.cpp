@@ -8,11 +8,6 @@
 #include "../simplex/Simplex.h"
 #include "../data_types/Overloads.h"
 
-TEST(Simplex, TahaCases) {
-    const auto x = "x";
-    const auto y = "y";
-    const auto z = "z";
-
 // Key example for testing the 2-phase method
 TEST(Simplex, TahaExample3_4_1) {
     const auto z = objectiveVar("z");
