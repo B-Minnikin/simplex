@@ -8,6 +8,14 @@
 #include "../simplex/Simplex.h"
 #include "../data_types/Overloads.h"
 
+template <typename T>
+auto VariableNear(T coefficient, std::string symbol, T eps = static_cast<T>(1e-3)) {
+    return testing::AllOf(
+        testing::Property(&Variable<T>::getSymbol, symbol),
+        testing::Property(&Variable<T>::getCoefficient, testing::DoubleNear(coefficient, eps))
+    );
+}
+
 // Key example for testing the 2-phase method
 TEST(Simplex, TahaExample3_4_1) {
     const auto z = objectiveVar("z");
@@ -47,9 +55,9 @@ TEST(Simplex, TahaCases2_2_2) {
     auto simplex = Simplex(Minimise, objective, constraints);
 
     EXPECT_THAT(simplex.solve(), testing::UnorderedElementsAre(
-        437.64 * z,
-        470.6 * x1,
-        329.4 * x2
+        VariableNear(437.647, z.getSymbol()),
+        VariableNear(470.588, x1.getSymbol()),
+        VariableNear(329.412, x2.getSymbol())
     ));
 }
 
