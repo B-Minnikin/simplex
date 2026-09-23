@@ -28,4 +28,11 @@ enum VarKind {
     Surplus,
 };
 
+enum PhaseOneResult {
+    Incomplete,
+    Optimal,
+    Degenerate,
+    Infeasible,
+};
+
 #endif //LINEAR_PROGRAMMING_ENUMTYPES_H

@@ -23,7 +23,8 @@ public:
         const ObjectiveType objectiveType,
         Constraint<T> objectiveFunction,
         std::vector<Constraint<T>> &constraints
-    ) : primaryObjective(objectiveFunction) {
+    ) : primaryObjective(objectiveFunction),
+        objectiveType(objectiveType) {
         reformulateObjective(primaryObjective);
 
         if (objectiveType == Minimise) {
@@ -34,15 +35,6 @@ public:
 
         addSlacksToConstraints(constraints);
         subtractSurplusesFromConstraints(constraints);
-
-        // Sort the variables
-        auto objectiveVariable = primaryObjective.getObjectiveVariable();
-        if (!objectiveVariable) {
-            std::cout << "Failed to get objective variable\n";
-            return;
-        }
-        std::string symbol = objectiveVariable.value()->getSymbol();
-        std::stable_partition(vars.begin(), vars.end(), [&symbol](const std::string &v) { return v != symbol; });
 
         // Create the RHS var
         extractVariables(Expression<T>(Variable<T>({.symbol = "RHS", .kind = Solution})));
@@ -55,7 +47,7 @@ public:
         rowCount = static_cast<int>(constraints.size()) + 1;
         tableauCoefficients = std::vector<T>(columnCount * rowCount);
 
-        modifyTableauObjective(objective);
+        modifyTableauObjectiveRow(objective);
 
         for (int i = columnCount; i < tableauCoefficients.size(); i++) {
             auto constraintIndex = std::floor(i / columnCount) - 1;
@@ -82,9 +74,27 @@ public:
             auto thisCoefficient = matchingVar.value()->getCoefficient();
             tableauCoefficients[i] = thisCoefficient;
         }
+
+        auto symbolMap = objective.getSymbolsOfKinds({Var, Slack, Artificial, Surplus});
+        for (auto i = 0; i < vars.size(); i++) {
+            if (const auto var = vars.at(i); !symbolMap.contains(var)) {
+                continue;
+            }
+
+            if (!isColumnBasic(i)) {
+                continue;
+            }
+
+            const auto basicRowIndex = getBasicRowIndex(i);
+            if (basicRowIndex < 0) {
+                continue;
+            }
+
+            eliminateRow(0, i, basicRowIndex);
+        }
     }
 
-    auto modifyTableauObjective(Constraint<T> &objective) -> void {
+    auto modifyTableauObjectiveRow(Constraint<T> &objective) -> void {
         // Make the first objective result row
         for (int i = 0; i < vars.size(); i++) {
             auto var = objective.findVariable(vars.at(i));
@@ -100,6 +110,7 @@ public:
     auto initPhaseOne(std::vector<Constraint<T> > &constraints) -> void {
         const auto artificialVariables = addArtificialsToConstraints(constraints);
 
+        // Create the phase one objective
         if (artificialVariables.size() > 0) {
             auto expr = Expression<T>(artificialVariables[0]);
 
@@ -119,6 +130,39 @@ public:
         }
 
         initTableau(phaseOneObjective.value(), constraints);
+    }
+
+    auto prepareForPhaseTwo(std::vector<Constraint<T>> &constraints) -> void {
+        removeArtificialVariables(constraints);
+
+        for (size_t i = 0; i < columnCount - 1; i++) {
+            auto varSymbol = vars.at(i % columnCount);
+
+            auto matchingVar = primaryObjective.findVariable(varSymbol);
+            if (!matchingVar) {
+                continue;
+            }
+
+            const auto coefficient = matchingVar.value()->getCoefficient();
+            tableauCoefficients[i] = coefficient;
+        }
+    }
+
+    auto rebalanceBasicVariables() -> void {
+        for (auto i = 0; i < vars.size() - 1; i++) {
+            if (!isColumnBasic(i)) {
+                continue;
+            }
+
+            const auto basicRowIndex = getBasicRowIndex(i);
+            if (basicRowIndex < 0) {
+                continue;
+            }
+
+            if (std::abs(tableauCoefficients[i]) > std::numeric_limits<T>::epsilon()) {
+                eliminateRow(0, i, basicRowIndex);
+            }
+        }
     }
 
     auto addSlacksToConstraints(std::vector<Constraint<T> > &constraints) -> void {
@@ -163,35 +207,51 @@ public:
     }
 
     [[nodiscard]] auto isSolved() const -> bool {
-        return getSmallestObjectiveCoefficient() >= 0;
+        return !isNegativeValueInObjectiveRow();
     }
 
-    [[nodiscard]] auto getFinalObjective() const -> std::vector<Variable<T>> {
-        std::vector<Variable<T>> finalVariables = {};
-    [[nodiscard]] auto isPhaseOneSolved() const -> bool {
-        // Do not include the solution column (last)
-        for (int i = 0; i < vars.size() - 1; i++) {
-            if (tableauCoefficients[i] != 0) {
-                return false;
-            }
-
-            const auto varSymbol = vars.at(i);
-            auto var = phaseOneObjective.value().findVariable(varSymbol);
-            if (!var) {
-                continue;
-            }
-
-            if (var.value()->getKind() != Artificial) {
-                continue;
-            }
-
-            // Artificial columns cannot be basic
-            if (isColumnBasic(i)) {
-                return false;
+    [[nodiscard]] auto isNegativeValueInObjectiveRow() const -> bool {
+        const auto epsilon = std::numeric_limits<T>::epsilon();
+        // Exclude RHS
+        for (int i = 0; i < columnCount - 2; i++) { // TODO - make this -2 nicer
+            if (tableauCoefficients[i] < -epsilon) {
+                return true;
             }
         }
 
-        return true;
+        return false;
+    }
+
+    [[nodiscard]] auto isPhaseOneSolved() const -> PhaseOneResult {
+        // All non-artificial coefficients are zero
+        // All artificial variables are non-basic
+
+        if (!isOptimal()) return Incomplete;
+
+        const auto rhs = tableauCoefficients[columnCount - 1];
+        const auto epsilon = std::numeric_limits<T>::epsilon();
+        if (tableauCoefficients[rhs] <= epsilon) {
+            return Optimal;
+        } else {
+            // TODO - handle infeasible + degenerate cases
+            return Infeasible;
+        }
+
+        return Incomplete;
+    }
+
+    [[nodiscard]] auto isOptimal() const -> bool {
+        auto isOptimal = true;
+        const auto epsilon = std::numeric_limits<T>::epsilon();
+        // Exclude RHS
+        for (int i = 0; i < columnCount - 1; i++) {
+            if (tableauCoefficients[i] > epsilon) {
+                isOptimal = false;
+                break;
+            }
+        }
+
+        return isOptimal;
     }
 
     [[nodiscard]] auto isPhaseOneValid(const std::vector<int> &artificialColumns) const -> bool {
@@ -209,12 +269,32 @@ public:
         std::vector<Variable<T> > finalVariables = {};
 
         for (auto i = 0; i < vars.size() - 1; i++) {
-            if (!isColumnBasic(i)) {
+            const auto thisVarIndex = i % (columnCount - vars.size() - 1);
+            auto varSymbol = vars.at(thisVarIndex);
+
+            const auto isObjective = vars.kindAt(thisVarIndex) == Objective;
+            if (isObjective) {
+                // Get objective RHS
+                auto solution = tableauCoefficients[columnCount - 1];
+                solution = objectiveType == Minimise
+                    ? solution * -1
+                    : solution;
+
+                finalVariables.push_back(Variable<T>({
+                    .coefficient = solution,
+                    .symbol = varSymbol
+                }));
+
                 continue;
             }
 
-            const auto thisVarIndex = i % (columnCount - vars.size() - 1);
-            auto thisVarSymbol = vars.at(thisVarIndex);
+            if (!isObjective && !primaryObjective.findVariable(varSymbol)) {
+                continue;
+            }
+
+            if (!isColumnBasic(i, true) && isObjective) {
+                continue;
+            }
 
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 auto elementIndex = rowIndex * columnCount + i;
@@ -226,8 +306,10 @@ public:
 
                     finalVariables.push_back(Variable<T>({
                         .coefficient = solution,
-                        .symbol = thisVarSymbol
+                        .symbol = varSymbol
                     }));
+
+                    break;
                 }
             }
         }
@@ -252,8 +334,43 @@ public:
                 continue;
             }
 
-            handleRow(i, pivotColumnIndex, pivotRowIndex);
+            eliminateRow(i, pivotColumnIndex, pivotRowIndex);
         }
+    }
+
+    auto phaseOnePivot() -> void {
+        const auto pivotColumnIndex = getMinimisedPivotColumn();
+        if (pivotColumnIndex == -1) {
+            return;
+        }
+
+        const auto pivotRowIndex = getPivotRow(pivotColumnIndex);
+        if (pivotRowIndex == -1) {
+            return;
+        }
+
+        handlePivotRow(pivotRowIndex, pivotColumnIndex, pivotRowIndex);
+        for (auto i = 0; i < rowCount; i++) {
+            if (i == pivotRowIndex) {
+                continue;
+            }
+
+            eliminateRow(i, pivotColumnIndex, pivotRowIndex);
+        }
+    }
+
+    [[nodiscard]] auto getMinimisedPivotColumn() -> int {
+        int largestIndex = -1;
+        T largestCoefficient = static_cast<T>(std::numeric_limits<T>::min());
+
+        for (int i = 0; i < columnCount - 1; i++) {
+            if (tableauCoefficients[i] > largestCoefficient) {
+                largestIndex = i;
+                largestCoefficient = tableauCoefficients[i];
+            }
+        }
+
+        return largestIndex;
     }
 
     auto print() const -> void {
@@ -325,6 +442,7 @@ private:
 
     int columnCount;
     int rowCount;
+    ObjectiveType objectiveType;
 
     auto handlePivotRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
         T pivotElement = tableauCoefficients[pivotRowIndex * columnCount + pivotColumnIndex];
@@ -335,31 +453,17 @@ private:
         }
     }
 
-    auto handleRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
-        T pivotElement = tableauCoefficients[pivotRowIndex * columnCount + pivotColumnIndex];
+    auto eliminateRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
+        const auto coefficient = tableauCoefficients[thisRowIndex * columnCount + pivotColumnIndex];
 
-        auto comp = pivotElement * -1;
-
-        auto shadowPivotIndex = thisRowIndex * columnCount + pivotColumnIndex;
-        auto thisElement = tableauCoefficients[shadowPivotIndex];
-        tableauCoefficients[shadowPivotIndex] += pivotElement * thisElement * -1;
-
-        // To obtain a zero in the entry first above the pivot element, we multiply the second row by -1 and add it to row 1.
-        // To obtain a zero in the element below the pivot, we multiply the second row by 40 and add it to the last row.
+        if (coefficient == 0) return;
 
         for (auto i = 0; i < columnCount; i++) {
-            if (i == pivotColumnIndex) {
-                // We should have already handled the pivot column
-                continue;
-            }
+            auto thisElementIndex = thisRowIndex * columnCount + i;
+            auto targetElementIndex = pivotRowIndex * columnCount + i;
+            auto thisCoefficient = tableauCoefficients[thisElementIndex];
 
-            auto pivotRowMatchingIndex = pivotRowIndex * columnCount + i;
-            T matchingPivotRowElement = tableauCoefficients[pivotRowMatchingIndex];
-
-            auto columnIndex = thisRowIndex * columnCount + i;
-            auto thisElementLoop = tableauCoefficients[columnIndex];
-
-            tableauCoefficients[columnIndex] += matchingPivotRowElement * thisElement * -1;
+            tableauCoefficients[thisElementIndex] = thisCoefficient - coefficient * tableauCoefficients[targetElementIndex];
         }
     }
 
@@ -375,11 +479,14 @@ private:
         }
     }
 
-    [[nodiscard]] auto isColumnBasic(const int columnIndex) const -> bool {
+    [[nodiscard]] auto isColumnBasic(const int columnIndex, const bool includeObjective = false) const -> bool {
         int oneCount = 0;
+        size_t startingIndex = includeObjective
+            ? 0
+            : 1;
         const auto epsilon = std::numeric_limits<T>::epsilon();
 
-        for (int i = 1; i < rowCount; i++) {
+        for (int i = startingIndex; i < rowCount; i++) {
             const auto coefficient = tableauCoefficients[columnCount * i + columnIndex];
 
             // Is one
@@ -400,24 +507,30 @@ private:
         return oneCount == 1;
     }
 
-    [[nodiscard]] auto getSmallestObjectiveCoefficient() const -> T {
-        auto smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
+    // Given a basic column, return the row index
+    [[nodiscard]] auto getBasicRowIndex(const int columnIndex) const -> int {
+        // Skip the first objective row
+        for (int i = 1; i < rowCount; i++) {
+            auto thisColumnIndex = i * columnCount + columnIndex;
+            auto thisCoefficient = tableauCoefficients[thisColumnIndex];
 
-        // Do not include the solution column (last)
-        for (int i = 0; i < vars.size() - 1; i++) {
-            if (tableauCoefficients[i] < smallestCoefficient) {
-                smallestCoefficient = tableauCoefficients[i];
+            if (thisCoefficient == 1) {
+                return i;
+            }
+
+            if (thisCoefficient != 0) {
+                return -1;
             }
         }
 
-        return smallestCoefficient;
+        return -1;
     }
 
     [[nodiscard]] auto getPivotColumn() const -> int {
         int smallestIndex = -1;
         T smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
 
-        for (int i = 0; i < columnCount - 1; i++) {
+        for (int i = 0; i < columnCount - 2; i++) {
             if (tableauCoefficients[i] < smallestCoefficient) {
                 smallestIndex = i;
                 smallestCoefficient = tableauCoefficients[i];
@@ -428,7 +541,7 @@ private:
     }
 
     [[nodiscard]] auto getPivotRow(const int columnIndex) const -> int {
-        auto smallestRowIndex = -1;
+        size_t smallestRowIndex = -1;
         auto smallestResultColumnValue = static_cast<T>(std::numeric_limits<T>::max());
 
         for (int i = 1; i < rowCount; i++) {
@@ -524,49 +637,46 @@ private:
     }
 
     auto removeArtificialVariables(std::vector<Constraint<T>> &constraints) -> void {
-        // Collect each variable index
-        std::set<int> varIndices = {};
-        std::set<std::string> varSymbols = {};
-        std::vector<std::string> newVars = {};
-        for (int i = 0; i < vars.size() - 1; i++) {
-            const auto varSymbol = vars.at(i);
-            auto var = phaseOneObjective.value().findVariable(varSymbol);
-            if (!var) {
-                continue;
-            }
+        auto artificialIndices = vars.getIndicesOfKind(Artificial);
 
-            if (var.value()->getKind() != Artificial) {
-                newVars.push_back(varSymbol);
-                continue;
-            }
+        removeTableauColumnIndices(artificialIndices);
+        vars.removeAtIndices(artificialIndices);
+    }
 
-            varIndices.emplace(i);
-            varSymbols.emplace(varSymbol);
-        }
-        vars = newVars;
-
-        // Recalculate column count
-        columnCount = static_cast<int>(vars.size());
-
-        // Remove artificials from the tableau
-        std::vector<T> newTableauCoefficients = std::vector<T>(columnCount * rowCount);
-        for (int i = 0; i < tableauCoefficients.size(); i++) {
-            if (const auto columnIndex = i % columnCount; varIndices.contains(columnIndex)) {
-                continue;
-            }
-
-            const auto coefficient = tableauCoefficients[i];
-            newTableauCoefficients.push_back(coefficient);
-        }
-
-        tableauCoefficients = newTableauCoefficients;
-
-        // rem from constraints
-        for (auto &constraint : constraints) {
-            for (auto &symbol : varSymbols) {
-                constraint.removeVariable(symbol);
+    auto removeTableauColumnIndices(const std::vector<size_t> &indices) -> void {
+        std::vector<bool> keepColumns(columnCount, true);
+        for (const auto columnIndex: indices) {
+            if (columnIndex >= 0 && columnIndex < columnCount) {
+                keepColumns[columnIndex] = false;
             }
         }
+
+        int newColumnCount = 0;
+        for (const bool keep : keepColumns) {
+            if (keep) { newColumnCount++; }
+        }
+
+        if (newColumnCount == columnCount) {
+            return;
+        }
+
+        size_t writeIndex = 0;
+        for (int r = 0; r < rowCount; r++) {
+            for (int c = 0; c < columnCount; c++) {
+                size_t readIndex = static_cast<size_t>(r) * columnCount + c;
+
+                if (keepColumns[c]) {
+                    if (writeIndex != readIndex) {
+                        tableauCoefficients[writeIndex] = tableauCoefficients[readIndex];
+                    }
+
+                    writeIndex++;
+                }
+            }
+        }
+
+        tableauCoefficients.resize(writeIndex);
+        columnCount = newColumnCount;
     }
 };
 

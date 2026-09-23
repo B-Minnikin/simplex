@@ -36,16 +36,32 @@ public:
             tableau.initPhaseOne(constraints);
             tableau.print();
 
-            while (!tableau.isPhaseOneSolved()) {
-                tableau.pivot();
+            while (true) {
+                const auto solution_state = tableau.isPhaseOneSolved();
+
+                if (solution_state == Infeasible) {
+                    std::cout << "Problem is infeasible\n";
+                    return {};
+                }
+
+                if (solution_state == Degenerate) {
+                    std::cout << "Problem is degenerate\n";
+                    return {};
+                }
+
+                if (solution_state == Optimal) {
+                    std::cout << "Phase 1 is optimal\n";
+                    break;
+                }
+
+                tableau.phaseOnePivot();
                 tableau.print();
             }
-
-            tableau.print();
 
             tableau.prepareForPhaseTwo(constraints);
         }
 
+        tableau.rebalanceBasicVariables();
         tableau.print();
 
         while (!tableau.isSolved()) {

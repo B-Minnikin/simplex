@@ -64,6 +64,18 @@ public:
         return &constraintVariable;
     }
 
+    [[nodiscard]] auto getSymbolsOfKinds(const std::set<VarKind> &kinds) const -> std::unordered_map<std::string, bool> {
+        std::unordered_map<std::string, bool> symbols = {};
+
+        for (auto &var : expression.getInnerVariables()) {
+            if (kinds.contains(var.getKind())) {
+                symbols.try_emplace(var.getSymbol(), true);
+            }
+        }
+
+        return symbols;
+    }
+
     [[nodiscard]] auto getObjectiveVariable() const -> std::optional<Variable<T>*> {
         return getVariableKind(Objective);
     }
@@ -94,6 +106,7 @@ public:
 
     auto negateExpression() -> void {
         expression.flipAllSigns();
+        equality = getConverseOperator(equality);
     }
 
 private:
@@ -115,6 +128,21 @@ private:
         }
 
         return std::nullopt;
+    }
+
+    [[nodiscard]] static auto getConverseOperator(const EqualityType equality) -> EqualityType {
+        switch (equality) {
+            case gt:
+                return lt;
+            case gte:
+                return lte;
+            case lt:
+                return gt;
+            case lte:
+                return gte;
+        }
+
+        return equality;
     }
 };
 

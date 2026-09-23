@@ -6,12 +6,14 @@
 #define LINEAR_PROGRAMMING_VARLIST_H
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "EnumTypes.h"
 #include "../data_types/Variable.h"
 
 struct VarList {
     std::vector<std::string> vars {};
+    std::vector<VarKind> kinds {};
 
     [[nodiscard]] auto size() const -> size_t { return vars.size(); }
     [[nodiscard]] auto empty() const -> bool { return vars.empty(); }
@@ -25,6 +27,7 @@ struct VarList {
                 }
 
                 vars.push_back(var);
+                kinds.push_back(kind);
                 hasSolution = true;
                 break;
             }
@@ -37,6 +40,7 @@ struct VarList {
                 const auto offset = hasSolution
                     ? 1 : 0;
                 vars.insert(vars.end() - offset, std::move(var));
+                kinds.insert(kinds.end() - offset, std::move(kind));
                 hasObjective = true;
                 break;
             }
@@ -50,6 +54,7 @@ struct VarList {
                 }
 
                 vars.insert(vars.end() - offset, std::move(var));
+                kinds.insert(kinds.end() - offset, std::move(kind));
                 break;
         }
     }
@@ -66,7 +71,9 @@ struct VarList {
         }
     }
 
-    auto removeAtIndices(const std::vector<int> &indices) -> void {
+    auto removeAtIndices(std::vector<size_t> &indices) -> void {
+        std::ranges::sort(indices, std::greater());
+
         for (const auto index : indices) {
             if (index >= vars.size()) {
                 continue;
@@ -81,6 +88,7 @@ struct VarList {
             }
 
             vars.erase(vars.begin() + index);
+            kinds.erase(kinds.begin() + index);
         }
     }
 
@@ -90,6 +98,22 @@ struct VarList {
 
     [[nodiscard]] auto at(const int index) const -> std::string {
         return vars[index];
+    }
+
+    [[nodiscard]] auto kindAt(const int index) const -> VarKind {
+        return kinds[index];
+    }
+
+    [[nodiscard]] auto getIndicesOfKind(const VarKind kind) const -> std::vector<size_t> {
+        std::vector<size_t> kindIndices = {};
+
+        for (auto i = 0; i < kinds.size(); i++) {
+            if (kinds[i] == Artificial) {
+                kindIndices.push_back(i);
+            }
+        }
+
+        return kindIndices;
     }
 
 private:
