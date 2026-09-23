@@ -12,6 +12,11 @@
 
 
 template <typename T>
+void PrintTo(const Variable<T>& t, std::ostream* os) {
+    *os << t.getCoefficient() << " * " << t.getSymbol();
+}
+
+template <typename T>
 class Simplex {
 public:
     explicit Simplex(
