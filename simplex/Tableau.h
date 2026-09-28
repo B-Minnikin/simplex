@@ -538,69 +538,6 @@ private:
         return smallestRowIndex;
     }
 
-    auto divideRowByValue(T value, const size_t rowIndex) -> void {
-        if (value == 0) {
-            return;
-        }
-
-        const auto startIndex = rowIndex * columnCount;
-        const auto endIndex = rowIndex * columnCount + columnCount;
-
-        for (size_t i = startIndex; i < endIndex; i++) {
-            tableauCoefficients[i] /= value;
-        }
-    }
-
-    auto divideRowByPivotRow(const size_t rowIndex, const size_t pivotRowIndex) -> void {
-        auto currentRowIndex = rowIndex * columnCount;
-        auto currentPivotRowIndex = pivotRowIndex * columnCount;
-
-        for (size_t i = currentRowIndex; i < columnCount; i++) {
-            auto currentPivotRowElement = tableauCoefficients[currentPivotRowIndex];
-
-            if (currentPivotRowElement != 0) {
-                tableauCoefficients[currentRowIndex] /= currentPivotRowElement;
-            }
-
-            currentRowIndex++;
-            currentPivotRowIndex++;
-        }
-    }
-
-    auto zeroOtherElementsInColumn(const size_t columnIndex, const size_t rowIndex) -> void {
-        auto pivotElementIndex = columnCount * rowIndex + columnIndex;
-        auto pivotElement = tableauCoefficients[pivotElementIndex];
-
-        for (size_t i = 0; i < rowCount; i++) {
-            if (i == rowIndex) {
-                continue;
-            }
-
-            auto thisElementIndex = rowCount * i + columnIndex;
-            auto thisElement = tableauCoefficients[thisElementIndex];
-
-            auto zeroCoefficient = thisElement * -1 * pivotElement;
-
-            for (size_t j = 0; j < columnIndex; j++) {
-                auto thisIndex = rowCount * i + j;
-                tableauCoefficients[thisIndex] + zeroCoefficient;
-            }
-        }
-    }
-
-    [[nodiscard]] auto getBasicColumnSolution(const size_t columnIndex) const -> T {
-        for (size_t i = 0; i < rowCount; i++) {
-            auto fieldIndex = i * rowCount + columnIndex;
-
-            if (tableauCoefficients[fieldIndex] == 1) {
-                auto solutionIndex = rowCount * i;
-                return tableauCoefficients[solutionIndex];
-            }
-        }
-
-        return -1;
-    }
-
     auto removeArtificialVariables(std::vector<Constraint<T>> &constraints) -> void {
         auto artificialIndices = vars.getIndicesOfKind(Artificial);
 
