@@ -12,6 +12,7 @@
 #include <format>
 #include <algorithm>
 
+#include "../data_types/Value.h"
 #include "../data_types/Expression.h"
 #include "../data_types/VarList.h"
 
@@ -159,7 +160,7 @@ public:
                 continue;
             }
 
-            if (std::abs(tableauCoefficients[i]) > std::numeric_limits<T>::epsilon()) {
+            if (std::abs(tableauCoefficients[i]) > EPSILON<T>) {
                 eliminateRow(0, i, basicRowIndex);
             }
         }
@@ -211,10 +212,9 @@ public:
     }
 
     [[nodiscard]] auto isNegativeValueInObjectiveRow() const -> bool {
-        const auto epsilon = std::numeric_limits<T>::epsilon();
         // Exclude RHS
         for (int i = 0; i < columnCount - 2; i++) { // TODO - make this -2 nicer
-            if (tableauCoefficients[i] < -epsilon) {
+            if (tableauCoefficients[i] < -EPSILON<T>) {
                 return true;
             }
         }
@@ -229,8 +229,7 @@ public:
         if (!isOptimal()) return Incomplete;
 
         const auto rhs = tableauCoefficients[columnCount - 1];
-        const auto epsilon = std::numeric_limits<T>::epsilon();
-        if (tableauCoefficients[rhs] <= epsilon) {
+        if (tableauCoefficients[rhs] <= EPSILON<T>) {
             return Optimal;
         } else {
             // TODO - handle infeasible + degenerate cases
@@ -242,10 +241,9 @@ public:
 
     [[nodiscard]] auto isOptimal() const -> bool {
         auto isOptimal = true;
-        const auto epsilon = std::numeric_limits<T>::epsilon();
         // Exclude RHS
         for (int i = 0; i < columnCount - 1; i++) {
-            if (tableauCoefficients[i] > epsilon) {
+            if (tableauCoefficients[i] > EPSILON<T>) {
                 isOptimal = false;
                 break;
             }
@@ -476,13 +474,12 @@ private:
         const size_t startingRowIndex = includeObjective
             ? 0
             : 1;
-        const auto epsilon = std::numeric_limits<T>::epsilon();
 
         for (size_t i = startingRowIndex; i < rowCount; i++) {
             const auto coefficient = tableauCoefficients[columnCount * i + columnIndex];
 
             // Is one
-            if (std::abs(coefficient - 1) <= epsilon) {
+            if (std::abs(coefficient - 1) <= EPSILON<T>) {
                 oneCount++;
 
                 if (oneCount > 1) {
@@ -490,7 +487,7 @@ private:
                 }
             } else {
                 // Not zero
-                if (std::abs(coefficient) > epsilon) {
+                if (std::abs(coefficient) > EPSILON<T>) {
                     return false;
                 }
             }

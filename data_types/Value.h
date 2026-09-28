@@ -7,6 +7,9 @@
 #include "Primitive.h"
 
 template <typename T>
+constexpr T EPSILON = static_cast<T>(1e-7);
+
+template <typename T>
 class Value : Primitive {
 public:
     explicit Value(T var) : var(var) { }
