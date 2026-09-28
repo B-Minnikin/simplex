@@ -321,22 +321,23 @@ public:
         }
 
         const auto pivotRowIndex = getPivotRow(pivotColumnIndex);
-        if (pivotRowIndex == -1) {
+        if (!pivotRowIndex) {
+            // TODO - error handling
             return;
         }
 
-        handlePivotRow(pivotRowIndex, pivotColumnIndex, pivotRowIndex);
+        handlePivotRow(pivotRowIndex.value(), pivotColumnIndex, pivotRowIndex.value());
         for (size_t i = 0; i < rowCount; i++) {
-            if (i == pivotRowIndex) {
+            if (i == pivotRowIndex.value()) {
                 continue;
             }
 
-            eliminateRow(i, pivotColumnIndex, pivotRowIndex);
+            eliminateRow(i, pivotColumnIndex, pivotRowIndex.value());
         }
     }
 
-    [[nodiscard]] auto getMinimisedPivotColumn() -> size_t {
-        size_t largestIndex = -1;
+    [[nodiscard]] auto getMinimisedPivotColumn() -> std::optional<size_t> {
+        std::optional<size_t> largestIndex = std::nullopt;
         T largestCoefficient = static_cast<T>(std::numeric_limits<T>::min());
 
         for (size_t i = 0; i < columnCount - 1; i++) {
@@ -409,8 +410,8 @@ public:
         return false;
     }
 
-    [[nodiscard]] auto getPivotColumn() const -> size_t {
-        size_t smallestIndex = -1;
+    [[nodiscard]] auto getPivotColumn() const -> std::optional<size_t> {
+        std::optional<size_t> smallestIndex = std::nullopt;
         T smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
 
         for (size_t i = 0; i < columnCount - 2; i++) {
@@ -439,7 +440,14 @@ private:
 
         for (auto i = 0; i < columnCount; i++) {
             auto columnIndex = thisRowIndex * columnCount + i;
-            tableauCoefficients[columnIndex] /= pivotElement;
+            auto result = tableauCoefficients[columnIndex] / pivotElement;
+
+            // Skim off floating point error at zero
+            if (std::abs(result) < EPSILON<T>) {
+                tableauCoefficients[columnIndex] = static_cast<T>(0);
+            } else {
+                tableauCoefficients[columnIndex] = result;
+            }
         }
     }
 
@@ -515,8 +523,8 @@ private:
         return -1;
     }
 
-    [[nodiscard]] auto getPivotRow(const size_t columnIndex) const -> size_t {
-        size_t smallestRowIndex = -1;
+    [[nodiscard]] auto getPivotRow(const size_t columnIndex) const -> std::optional<size_t> {
+        std::optional<size_t> smallestRowIndex = std::nullopt;
         auto smallestResultColumnValue = static_cast<T>(std::numeric_limits<T>::max());
 
         for (size_t i = 1; i < rowCount; i++) {
@@ -524,7 +532,7 @@ private:
             auto solutionIndex = columnCount * i + columnCount - 1;
 
             auto value = tableauCoefficients[valueIndex];
-            if (value <= 0) {
+            if (value <= EPSILON<T>) {
                 continue;
             }
 

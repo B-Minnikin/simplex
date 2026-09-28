@@ -55,8 +55,11 @@ public:
                 }
 
                 const auto pivotColumnIndex = tableau.getMinimisedPivotColumn();
+                if (!pivotColumnIndex) {
+                    return {};
+                }
 
-                tableau.pivot(pivotColumnIndex);
+                tableau.pivot(pivotColumnIndex.value());
                 tableau.print();
             }
 
@@ -68,8 +71,12 @@ public:
 
         while (!tableau.isSolved()) {
             const auto pivotColumnIndex = tableau.getPivotColumn();
+            if (!pivotColumnIndex) {
+                // TODO - add error handling
+                return {};
+            }
 
-            tableau.pivot(pivotColumnIndex);
+            tableau.pivot(pivotColumnIndex.value());
             tableau.print();
         }
 
