@@ -17,7 +17,6 @@ enable_testing()
 
 add_executable(
         tests
-        tests/hello_test.cpp
         tests/simplex.cpp
 )
 

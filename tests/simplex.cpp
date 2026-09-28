@@ -9,7 +9,7 @@
 #include "../data_types/Overloads.h"
 
 template <typename T>
-auto VariableNear(T coefficient, std::string symbol, T eps = static_cast<T>(1e-3)) {
+static auto VariableNear(T coefficient, std::string symbol, T eps = static_cast<T>(1e-3)) {
     return testing::AllOf(
         testing::Property(&Variable<T>::getSymbol, symbol),
         testing::Property(&Variable<T>::getCoefficient, testing::DoubleNear(coefficient, eps))

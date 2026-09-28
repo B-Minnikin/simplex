@@ -222,7 +222,7 @@ public:
         return false;
     }
 
-    [[nodiscard]] auto isPhaseOneSolved() const -> PhaseOneResult {
+    [[nodiscard]] auto isPhaseOneSolved() const -> SolutionStatus {
         // All non-artificial coefficients are zero
         // All artificial variables are non-basic
 
@@ -256,7 +256,7 @@ public:
 
     [[nodiscard]] auto isPhaseOneValid(const std::vector<int> &artificialColumns) const -> bool {
         // All artificial variables must be non-basic
-        for (const int columnIndex : artificialColumns) {
+        for (const size_t columnIndex : artificialColumns) {
             if (!isColumnBasic(columnIndex)) {
                 return false;
             }
@@ -317,8 +317,7 @@ public:
         return finalVariables;
     }
 
-    auto pivot() -> void {
-        const auto pivotColumnIndex = getPivotColumn();
+    auto pivot(const size_t pivotColumnIndex) -> void {
         if (pivotColumnIndex == -1) {
             return;
         }
@@ -329,7 +328,7 @@ public:
         }
 
         handlePivotRow(pivotRowIndex, pivotColumnIndex, pivotRowIndex);
-        for (auto i = 0; i < rowCount; i++) {
+        for (size_t i = 0; i < rowCount; i++) {
             if (i == pivotRowIndex) {
                 continue;
             }
@@ -338,32 +337,11 @@ public:
         }
     }
 
-    auto phaseOnePivot() -> void {
-        const auto pivotColumnIndex = getMinimisedPivotColumn();
-        if (pivotColumnIndex == -1) {
-            return;
-        }
-
-        const auto pivotRowIndex = getPivotRow(pivotColumnIndex);
-        if (pivotRowIndex == -1) {
-            return;
-        }
-
-        handlePivotRow(pivotRowIndex, pivotColumnIndex, pivotRowIndex);
-        for (auto i = 0; i < rowCount; i++) {
-            if (i == pivotRowIndex) {
-                continue;
-            }
-
-            eliminateRow(i, pivotColumnIndex, pivotRowIndex);
-        }
-    }
-
-    [[nodiscard]] auto getMinimisedPivotColumn() -> int {
-        int largestIndex = -1;
+    [[nodiscard]] auto getMinimisedPivotColumn() -> size_t {
+        size_t largestIndex = -1;
         T largestCoefficient = static_cast<T>(std::numeric_limits<T>::min());
 
-        for (int i = 0; i < columnCount - 1; i++) {
+        for (size_t i = 0; i < columnCount - 1; i++) {
             if (tableauCoefficients[i] > largestCoefficient) {
                 largestIndex = i;
                 largestCoefficient = tableauCoefficients[i];
@@ -433,6 +411,20 @@ public:
         return false;
     }
 
+    [[nodiscard]] auto getPivotColumn() const -> size_t {
+        size_t smallestIndex = -1;
+        T smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
+
+        for (size_t i = 0; i < columnCount - 2; i++) {
+            if (tableauCoefficients[i] < smallestCoefficient) {
+                smallestIndex = i;
+                smallestCoefficient = tableauCoefficients[i];
+            }
+        }
+
+        return smallestIndex;
+    }
+
 private:
     VarList vars {};
     std::vector<T> tableauCoefficients;
@@ -440,11 +432,11 @@ private:
     Constraint<T> primaryObjective;
     std::optional<Constraint<T>> phaseOneObjective;
 
-    int columnCount;
-    int rowCount;
+    size_t columnCount;
+    size_t rowCount;
     ObjectiveType objectiveType;
 
-    auto handlePivotRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
+    auto handlePivotRow(const size_t thisRowIndex, const size_t pivotColumnIndex, const size_t pivotRowIndex) -> void {
         T pivotElement = tableauCoefficients[pivotRowIndex * columnCount + pivotColumnIndex];
 
         for (auto i = 0; i < columnCount; i++) {
@@ -453,7 +445,7 @@ private:
         }
     }
 
-    auto eliminateRow(const int thisRowIndex, const int pivotColumnIndex, const int pivotRowIndex) -> void {
+    auto eliminateRow(const size_t thisRowIndex, const size_t pivotColumnIndex, const size_t pivotRowIndex) -> void {
         const auto coefficient = tableauCoefficients[thisRowIndex * columnCount + pivotColumnIndex];
 
         if (coefficient == 0) return;
@@ -479,14 +471,14 @@ private:
         }
     }
 
-    [[nodiscard]] auto isColumnBasic(const int columnIndex, const bool includeObjective = false) const -> bool {
+    [[nodiscard]] auto isColumnBasic(const size_t columnIndex, const bool includeObjective = false) const -> bool {
         int oneCount = 0;
-        size_t startingIndex = includeObjective
+        const size_t startingRowIndex = includeObjective
             ? 0
             : 1;
         const auto epsilon = std::numeric_limits<T>::epsilon();
 
-        for (int i = startingIndex; i < rowCount; i++) {
+        for (size_t i = startingRowIndex; i < rowCount; i++) {
             const auto coefficient = tableauCoefficients[columnCount * i + columnIndex];
 
             // Is one
@@ -508,9 +500,9 @@ private:
     }
 
     // Given a basic column, return the row index
-    [[nodiscard]] auto getBasicRowIndex(const int columnIndex) const -> int {
+    [[nodiscard]] auto getBasicRowIndex(const size_t columnIndex) const -> size_t {
         // Skip the first objective row
-        for (int i = 1; i < rowCount; i++) {
+        for (size_t i = 1; i < rowCount; i++) {
             auto thisColumnIndex = i * columnCount + columnIndex;
             auto thisCoefficient = tableauCoefficients[thisColumnIndex];
 
@@ -526,25 +518,11 @@ private:
         return -1;
     }
 
-    [[nodiscard]] auto getPivotColumn() const -> int {
-        int smallestIndex = -1;
-        T smallestCoefficient = static_cast<T>(std::numeric_limits<T>::max());
-
-        for (int i = 0; i < columnCount - 2; i++) {
-            if (tableauCoefficients[i] < smallestCoefficient) {
-                smallestIndex = i;
-                smallestCoefficient = tableauCoefficients[i];
-            }
-        }
-
-        return smallestIndex;
-    }
-
-    [[nodiscard]] auto getPivotRow(const int columnIndex) const -> int {
+    [[nodiscard]] auto getPivotRow(const size_t columnIndex) const -> size_t {
         size_t smallestRowIndex = -1;
         auto smallestResultColumnValue = static_cast<T>(std::numeric_limits<T>::max());
 
-        for (int i = 1; i < rowCount; i++) {
+        for (size_t i = 1; i < rowCount; i++) {
             auto valueIndex = columnCount * i + columnIndex;
             auto solutionIndex = columnCount * i + columnCount - 1;
 
@@ -563,17 +541,7 @@ private:
         return smallestRowIndex;
     }
 
-    auto performPivot(const int pivotColumnIndex, const int pivotRowIndex, const int currentRowIndex) -> void {
-        auto pivotElementIndex = rowCount * pivotRowIndex + pivotColumnIndex;
-        auto pivotElement = tableauCoefficients[pivotElementIndex];
-
-        for (int i = 0; i < columnCount; i++) {
-            auto thisElementIndex = rowCount * currentRowIndex + i;
-            tableauCoefficients[thisElementIndex] /= pivotElement;
-        }
-    }
-
-    auto divideRowByValue(T value, const int rowIndex) -> void {
+    auto divideRowByValue(T value, const size_t rowIndex) -> void {
         if (value == 0) {
             return;
         }
@@ -581,16 +549,16 @@ private:
         const auto startIndex = rowIndex * columnCount;
         const auto endIndex = rowIndex * columnCount + columnCount;
 
-        for (int i = startIndex; i < endIndex; i++) {
+        for (size_t i = startIndex; i < endIndex; i++) {
             tableauCoefficients[i] /= value;
         }
     }
 
-    auto divideRowByPivotRow(const int rowIndex, const int pivotRowIndex) -> void {
+    auto divideRowByPivotRow(const size_t rowIndex, const size_t pivotRowIndex) -> void {
         auto currentRowIndex = rowIndex * columnCount;
         auto currentPivotRowIndex = pivotRowIndex * columnCount;
 
-        for (int i = currentRowIndex; i < columnCount; i++) {
+        for (size_t i = currentRowIndex; i < columnCount; i++) {
             auto currentPivotRowElement = tableauCoefficients[currentPivotRowIndex];
 
             if (currentPivotRowElement != 0) {
@@ -602,11 +570,11 @@ private:
         }
     }
 
-    auto zeroOtherElementsInColumn(const int columnIndex, const int rowIndex) -> void {
+    auto zeroOtherElementsInColumn(const size_t columnIndex, const size_t rowIndex) -> void {
         auto pivotElementIndex = columnCount * rowIndex + columnIndex;
         auto pivotElement = tableauCoefficients[pivotElementIndex];
 
-        for (int i = 0; i < rowCount; i++) {
+        for (size_t i = 0; i < rowCount; i++) {
             if (i == rowIndex) {
                 continue;
             }
@@ -616,15 +584,15 @@ private:
 
             auto zeroCoefficient = thisElement * -1 * pivotElement;
 
-            for (int j = 0; j < columnIndex; j++) {
+            for (size_t j = 0; j < columnIndex; j++) {
                 auto thisIndex = rowCount * i + j;
                 tableauCoefficients[thisIndex] + zeroCoefficient;
             }
         }
     }
 
-    [[nodiscard]] auto getBasicColumnSolution(const int columnIndex) const -> T {
-        for (int i = 0; i < rowCount; i++) {
+    [[nodiscard]] auto getBasicColumnSolution(const size_t columnIndex) const -> T {
+        for (size_t i = 0; i < rowCount; i++) {
             auto fieldIndex = i * rowCount + columnIndex;
 
             if (tableauCoefficients[fieldIndex] == 1) {
@@ -661,8 +629,8 @@ private:
         }
 
         size_t writeIndex = 0;
-        for (int r = 0; r < rowCount; r++) {
-            for (int c = 0; c < columnCount; c++) {
+        for (size_t r = 0; r < rowCount; r++) {
+            for (size_t c = 0; c < columnCount; c++) {
                 size_t readIndex = static_cast<size_t>(r) * columnCount + c;
 
                 if (keepColumns[c]) {

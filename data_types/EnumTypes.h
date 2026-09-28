@@ -28,7 +28,7 @@ enum VarKind {
     Surplus,
 };
 
-enum PhaseOneResult {
+enum SolutionStatus {
     Incomplete,
     Optimal,
     Degenerate,

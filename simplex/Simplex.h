@@ -37,24 +37,26 @@ public:
             tableau.print();
 
             while (true) {
-                const auto solution_state = tableau.isPhaseOneSolved();
+                const auto solution_status = tableau.isPhaseOneSolved();
 
-                if (solution_state == Infeasible) {
+                if (solution_status == Infeasible) {
                     std::cout << "Problem is infeasible\n";
                     return {};
                 }
 
-                if (solution_state == Degenerate) {
+                if (solution_status == Degenerate) {
                     std::cout << "Problem is degenerate\n";
                     return {};
                 }
 
-                if (solution_state == Optimal) {
+                if (solution_status == Optimal) {
                     std::cout << "Phase 1 is optimal\n";
                     break;
                 }
 
-                tableau.phaseOnePivot();
+                const auto pivotColumnIndex = tableau.getMinimisedPivotColumn();
+
+                tableau.pivot(pivotColumnIndex);
                 tableau.print();
             }
 
@@ -65,7 +67,9 @@ public:
         tableau.print();
 
         while (!tableau.isSolved()) {
-            tableau.pivot();
+            const auto pivotColumnIndex = tableau.getPivotColumn();
+
+            tableau.pivot(pivotColumnIndex);
             tableau.print();
         }
 
