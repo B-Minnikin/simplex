@@ -16,6 +16,27 @@ static auto VariableNear(T coefficient, std::string symbol, T eps = static_cast<
     );
 }
 
+TEST(Simplex, TahaProblems3_10) {
+    const auto z = objectiveVar("z");
+    const auto x1 = var("x1");
+    const auto x2 = var("x2");
+
+    const auto objective = 2.0 * x1 + 3.0 * x2== z;
+
+    const std::vector constraints {
+        x1 + 3.0 * x2 <= 12.0,
+        3.0 * x1 + 2.0 * x2 <= 12.0,
+    };
+
+    auto simplex = Simplex(Maximise, objective, constraints);
+
+    EXPECT_THAT(simplex.solve(), testing::UnorderedElementsAre(
+        VariableNear(13.7143, z.getSymbol()), // 96 / 7
+        VariableNear(1.7143, x1.getSymbol()), // 12 / 7
+        VariableNear(3.4286, x2.getSymbol()) // 24 / 7
+    ));
+}
+
 // Key example for testing the 2-phase method
 TEST(Simplex, TahaExample3_4_1) {
     const auto z = objectiveVar("z");
