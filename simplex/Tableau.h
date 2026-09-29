@@ -290,7 +290,16 @@ public:
                 continue;
             }
 
-            if (!isColumnBasic(i, true) && isObjective) {
+            if (!isColumnBasic(i, true)) {
+                if (isObjective) {
+                    continue;
+                }
+
+                finalVariables.push_back(Variable<T>({
+                    .coefficient = static_cast<T>(0),
+                    .symbol = varSymbol
+                }));
+
                 continue;
             }
 
