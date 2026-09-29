@@ -16,6 +16,27 @@ static auto VariableNear(T coefficient, std::string symbol, T eps = static_cast<
     );
 }
 
+TEST(Simplex, TahaExample3_5_1_Degeneracy) {
+    const auto z = objectiveVar("z");
+    const auto x1 = var("x1");
+    const auto x2 = var("x2");
+
+    const auto objective = 3.0 * x1 + 9.0 * x2== z;
+
+    const std::vector constraints {
+        x1 + 4.0 * x2 <= 8.0,
+        x1 + 2.0 * x2 <= 4.0,
+    };
+
+    auto simplex = Simplex(Maximise, objective, constraints);
+
+    EXPECT_THAT(simplex.solve(), testing::UnorderedElementsAre(
+        VariableNear(18.0, z.getSymbol()),
+        VariableNear(0.0, x1.getSymbol()),
+        VariableNear(2.0, x2.getSymbol())
+    ));
+}
+
 TEST(Simplex, TahaProblems3_10) {
     const auto z = objectiveVar("z");
     const auto x1 = var("x1");
